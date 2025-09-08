@@ -1,20 +1,39 @@
 # Edge-AI Kitchen Assistant
 
-A fully offline macOS companion that takes one photo of your fridge, combines it with whatever meal you're craving, and instantly delivers a step-by-step recipe, while protecting your privacy by keeping all vision, language, and preference models entirely on your M-series Mac.
+1. built a complete frontend-backend separation architecture for a Kitchen Assistant App: an iOS SwiftUI frontend with image upload, ingredient detection, and recipe display features.
 
-## 🎯 Current Implementation Overview
+2. paired with a Python FastAPI backend providing RESTful API services including image processing and recipe generation endpoints. 
 
-### ✅ Complete Frontend-Backend Architecture
+3. A fully offline macOS companion that takes one photo of your fridge, combines it with whatever meal you're craving, and instantly delivers a step-by-step recipe.
+
+4. using Mock AI services to simulate YOLO ingredient detection and LLM recipe generation
+
+
+## Current Architecture
+
+### System Overview
+```
+iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
+                               ↓
+                            Mock AI Services
+```
+
+### Complete Frontend-Backend Architecture Diagram
+![App Architecture](image.png)
+
+## Current Implementation Overview
+
+### Complete Frontend-Backend Architecture
 - **Native iOS SwiftUI App** with full user interface
 - **Python FastAPI Backend** with RESTful API services  
 - **End-to-End Data Flow** from camera capture to recipe display
 
-## 📱 iOS App Features & Implementation
+## iOS App Features & Implementation
 
 ### 1. Home Tab - Welcome & Overview
 **Functionality:**
 - Welcome screen showcasing app feature overview
-- Four main features introduction: fridge scanning, AI ingredient recognition, personalized recipes, privacy protection
+- Four main features introduction: fridge scanning, AI ingredient recognition, personalized recipes
 - Clear navigation guidance for users
 
 **Technical Implementation:**
@@ -24,7 +43,7 @@ A fully offline macOS companion that takes one photo of your fridge, combines it
 
 ### 2. Camera Tab - Photo Capture & Processing
 **Functionality:**
-- **Photo Capture**: Support for camera shooting and photo library selection
+- **Photo Capture**: Support for photo library selection
 - **Image Upload**: Automatic compression and upload to backend API
 - **Ingredient Detection**: Send images to `/api/detect` endpoint for processing
 - **Interactive Input**: User input for desired meal type
@@ -82,7 +101,7 @@ struct Instruction {
 - @State property wrappers for settings persistence
 - Structured sections for different preference categories
 
-## 🖥️ Backend API Features & Implementation
+## Backend API Features & Implementation
 
 ### FastAPI Architecture & Endpoints
 ```python
@@ -149,7 +168,7 @@ Image Upload → Pillow Processing → YOLO Simulation → Ingredient JSON
 Recipe Request → Parameter Validation → LLM Simulation → Complete Recipe JSON
 ```
 
-## 🔄 Mock AI Services Implementation
+## Mock AI Services Implementation
 
 ### YOLO Ingredient Detection Simulation
 **Technical Details:**
@@ -187,7 +206,7 @@ def generate_mock_recipe(request: RecipeRequest) -> Recipe:
     # Tag categorization based on cuisine and preferences
 ```
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### 1. Start the Backend Server
 ```bash
@@ -201,7 +220,7 @@ Server will start at `http://localhost:8000`
 ```bash
 open ios-app/KitchenAssistant.xcodeproj
 ```
-Select iOS simulator in Xcode and press ▶️ to run
+Select iOS simulator in Xcode and press Play to run
 
 ### 3. Test Complete Workflow
 1. Open app in iOS simulator
@@ -213,20 +232,3 @@ Select iOS simulator in Xcode and press ▶️ to run
 ### 4. API Documentation
 Visit `http://localhost:8000/docs` for interactive Swagger documentation
 
-## 🎯 Architecture Benefits
-
-### Software Engineering Best Practices
-- **Clean Architecture Separation**: Frontend/backend decoupling with clear responsibilities
-- **RESTful API Design**: Standardized HTTP methods and status codes
-- **Comprehensive Error Handling**: Network, server, and data validation errors
-- **Type Safety**: Strong typing in both Swift and Python
-- **Async Programming**: Non-blocking UI and API calls
-- **Mock-Driven Development**: AI placeholders for rapid prototyping
-
-### Future Scalability
-- **AI Model Flexibility**: Mock services can be seamlessly replaced with real AI
-- **Deployment Ready**: Docker containerization support
-- **Cross-Platform Compatible**: API architecture supports multiple client platforms
-- **Privacy First**: Architecture supports on-device AI processing
-
-This version perfectly demonstrates the complete software engineering workflow, from user interface to API design, establishing a solid foundation for subsequent real AI integration.
