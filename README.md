@@ -28,6 +28,12 @@ iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
 - **Python FastAPI Backend** with RESTful API services  
 - **End-to-End Data Flow** from camera capture to recipe display
 
+## Next Development Steps
+
+### Phase 1: Local AI Integration
+- **iOS Core ML Integration**: Add YOLO tiny model for on-device ingredient detection
+- **Local LLM Service**: Integrate lightweight language model for basic recipe generation
+
 ## iOS App Features & Implementation
 
 ### 1. Home Tab - Welcome & Overview
@@ -231,4 +237,5 @@ Select iOS simulator in Xcode and press Play to run
 
 ### 4. API Documentation
 Visit `http://localhost:8000/docs` for interactive Swagger documentation
+
 
