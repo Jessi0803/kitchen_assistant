@@ -2,7 +2,7 @@
 
 1. built a complete frontend-backend separation architecture for a Kitchen Assistant App: an iOS SwiftUI frontend with image upload, ingredient detection, and recipe display features.
 
-2. paired with a Python FastAPI backend providing RESTful API services including image processing and recipe generation endpoints. 
+2. paired with a Python FastAPI backend including image processing and recipe generation endpoints. 
 
 3. A fully offline macOS companion that takes one photo of your fridge, combines it with whatever meal you're craving, and instantly delivers a step-by-step recipe.
 
@@ -13,7 +13,7 @@
 
 ### System Overview
 ```
-iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
+iOS SwiftUI App ← REST API → Backend (localhost:8000)
                                ↓
                             Mock AI Services
 ```
