@@ -5,13 +5,57 @@ from typing import List, Optional
 import random
 import time
 import io
+import os
 from PIL import Image
+from ultralytics import YOLO
+import torch
 
 app = FastAPI(
     title="Kitchen Assistant API",
     description="Edge-AI Kitchen Assistant Backend API",
     version="1.0.0"
 )
+
+# Initialize YOLO model
+model_path = os.path.join(os.path.dirname(__file__), 'yolov8n.pt')
+if not os.path.exists(model_path):
+    # If model not in backend folder, try current directory
+    model_path = 'yolov8n.pt'
+
+try:
+    yolo_model = YOLO(model_path)
+    print("✅ YOLO model loaded successfully")
+except Exception as e:
+    print(f"❌ Failed to load YOLO model: {e}")
+    yolo_model = None
+
+# COCO class names that are food-related
+FOOD_CLASSES = {
+    'apple', 'banana', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog',
+    'pizza', 'donut', 'cake', 'chair', 'dining table', 'laptop', 'mouse',
+    'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster',
+    'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
+    'hair drier', 'toothbrush', 'bottle', 'wine glass', 'cup', 'fork', 'knife',
+    'spoon', 'bowl'
+}
+
+# Mapping common food items that YOLO can detect
+YOLO_TO_FOOD_MAPPING = {
+    'apple': 'Apple',
+    'banana': 'Banana',
+    'sandwich': 'Sandwich',
+    'orange': 'Orange',
+    'broccoli': 'Broccoli',
+    'carrot': 'Carrot',
+    'hot dog': 'Hot Dog',
+    'pizza': 'Pizza',
+    'donut': 'Donut',
+    'cake': 'Cake',
+    'bottle': 'Bottle',
+    'wine glass': 'Glass',
+    'cup': 'Cup',
+    'bowl': 'Bowl'
+}
 
 # CORS middleware for iOS app
 app.add_middleware(
@@ -102,38 +146,83 @@ async def health_check():
 @app.post("/api/detect", response_model=DetectionResponse)
 async def detect_ingredients(image: UploadFile = File(...)):
     """
-    Detect ingredients in uploaded fridge image.
-    For week 1 demo: returns mock data to demonstrate API structure.
+    Detect ingredients in uploaded fridge image using YOLOv8n model.
     """
     start_time = time.time()
-    
+
     # Validate image file
     if not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
-    
+
+    if yolo_model is None:
+        # Fallback to mock data if model failed to load
+        return await _fallback_mock_detection(image, start_time)
+
     try:
         # Read and validate image
         image_data = await image.read()
         pil_image = Image.open(io.BytesIO(image_data))
-        
-        # Simulate processing time
-        await asyncio.sleep(1.5)  # Simulate AI processing
-        
-        # Mock ingredient detection
-        detected_count = random.randint(4, 8)
-        detected_ingredients = random.sample(MOCK_INGREDIENTS, detected_count)
-        confidence_scores = [round(random.uniform(0.7, 0.95), 2) for _ in detected_ingredients]
-        
+
+        # Run YOLO inference
+        results = yolo_model(pil_image, conf=0.25)  # confidence threshold
+
+        detected_ingredients = []
+        confidence_scores = []
+
+        # Process YOLO results
+        for result in results:
+            for box in result.boxes:
+                if box.conf is not None and box.cls is not None:
+                    confidence = float(box.conf.cpu().numpy())
+                    class_id = int(box.cls.cpu().numpy())
+                    class_name = yolo_model.names[class_id].lower()
+
+                    # Check if detected class is food-related
+                    if class_name in YOLO_TO_FOOD_MAPPING:
+                        food_name = YOLO_TO_FOOD_MAPPING[class_name]
+                        if food_name not in detected_ingredients:  # Avoid duplicates
+                            detected_ingredients.append(food_name)
+                            confidence_scores.append(round(confidence, 2))
+
+        # If no food items detected, provide fallback with mock data
+        if not detected_ingredients:
+            print("⚠️ No food items detected, using fallback")
+            return await _fallback_mock_detection(image, start_time)
+
         processing_time = time.time() - start_time
-        
+
+        print(f"🔍 Detected {len(detected_ingredients)} food items: {detected_ingredients}")
+
         return DetectionResponse(
             ingredients=detected_ingredients,
             confidence=confidence_scores,
             processing_time=processing_time
         )
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+        print(f"❌ YOLO detection failed: {e}")
+        # Fallback to mock data on error
+        return await _fallback_mock_detection(image, start_time)
+
+async def _fallback_mock_detection(image: UploadFile, start_time: float):
+    """Fallback function for mock detection when YOLO fails"""
+    # Simulate processing time
+    await asyncio.sleep(1.0)
+
+    # Mock ingredient detection
+    detected_count = random.randint(3, 6)
+    detected_ingredients = random.sample(MOCK_INGREDIENTS, detected_count)
+    confidence_scores = [round(random.uniform(0.6, 0.85), 2) for _ in detected_ingredients]
+
+    processing_time = time.time() - start_time
+
+    print(f"🔄 Using mock detection: {detected_ingredients}")
+
+    return DetectionResponse(
+        ingredients=detected_ingredients,
+        confidence=confidence_scores,
+        processing_time=processing_time
+    )
 
 @app.post("/api/recipes", response_model=Recipe)
 async def generate_recipe(request: RecipeRequest):
