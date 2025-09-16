@@ -20,7 +20,7 @@ app = FastAPI(
 model_path = os.path.join(os.path.dirname(__file__), 'yolov8n.pt')
 if not os.path.exists(model_path):
     # If model not in backend folder, try current directory
-    model_path = 'yolov8n.pt'
+    model_path = 'yolov8n.pt' #yolov8n.pt
 
 try:
     yolo_model = YOLO(model_path)

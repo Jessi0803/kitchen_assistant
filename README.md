@@ -6,19 +6,17 @@
 
 3. A fully offline macOS companion that takes one photo of your fridge, combines it with whatever meal you're craving, and instantly delivers a step-by-step recipe.
 
-4. **Real YOLOv8n AI Integration**: Implemented actual computer vision for food detection with 91% accuracy
-5. Using Mock LLM services for recipe generation (to be replaced with real LLM)
+4. using Mock AI services to simulate YOLO ingredient detection and LLM recipe generation
 
 
 ## Current Architecture
 
 ### System Overview
 ```
-iOS SwiftUI App ← REST API → Backend (localhost:8000)
+iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
                                ↓
-                         YOLOv8n AI Model (6.2MB)
-                               ↓
-                         Real-time Food Detection
+                            Yolonv8 for ingredient detection
+                            Mock AI Services for recipe generation
 ```
 
 ### Complete Frontend-Backend Architecture Diagram
@@ -33,236 +31,67 @@ iOS SwiftUI App ← REST API → Backend (localhost:8000)
 
 ## Next Development Steps
 
-### Phase 1: Local AI Integration
-- **iOS Core ML Integration**: Add YOLO tiny model for on-device ingredient detection
+### Local AI Integration
+- **iOS Core ML Integration**: fintune Yolov8n on food101 dataset
 - **Local LLM Service**: Integrate lightweight language model for basic recipe generation
 
-## iOS App Features & Implementation
 
-### 1. Home Tab - Welcome & Overview
-**Functionality:**
-- Welcome screen showcasing app feature overview
-- Four main features introduction: fridge scanning, AI ingredient recognition, personalized recipes
-- Clear navigation guidance for users
+## YOLO Model Training Process
 
-**Technical Implementation:**
-- **ContentView.swift**: Main tab navigation with SwiftUI TabView
-- State management using `@State` for selected tab tracking
-- Custom welcome UI with SF Symbols icons and structured layout
+### Fine-tuning Pipeline
+The YOLO model undergoes a comprehensive training process to learn food detection:
 
-### 2. Camera Tab - Photo Capture & Processing
-**Functionality:**
-- **Photo Capture**: Support for photo library selection
-- **Image Upload**: Automatic compression and upload to backend API
-- **Ingredient Detection**: Send images to `/api/detect` endpoint for processing
-- **Interactive Input**: User input for desired meal type
-- **Real-time Feedback**: Processing status and loading animations
+1. **Image Input → YOLO Model**
+   - Raw images are preprocessed and fed into the YOLOv8n architecture
+   - Feature extraction through convolutional layers at multiple scales
 
-**Technical Implementation:**
-- **CameraView.swift**: Camera interface and API integration
-- **ImagePicker.swift**: UIKit bridge for camera and photo library access
-- **APIClient.swift**: HTTP communication layer with multipart form data upload
-```swift
-// Key technical features
-- Multipart form data image upload
-- Async/await network requests
-- Comprehensive error handling
-- Image compression (JPEG 0.8 quality)
-- Loading state management
-```
+2. **Model Output → Multiple Candidate Bounding Boxes + Class Probabilities**
+   - Model generates thousands of candidate detections
+   - Each detection includes bounding box coordinates and class probabilities
+   - Raw predictions need filtering and refinement
 
-### 3. Recipe Tab - Complete Recipe Display
-**Functionality:**
-- **Complete Recipe Information**: Title, description, prep time, cook time
-- **Detailed Ingredient List**: Including quantities, units, and notes
-- **Step-by-Step Cooking Instructions**: Each step with timing, temperature, and tips
-- **Nutrition Information**: Calories, protein, carbs, etc.
-- **Difficulty Indicators**: Easy/Medium/Hard with color coding
+3. **Non-Maximum Suppression → Filter Best Bounding Boxes**
+   - Removes overlapping detections for the same object
+   - Keeps only the highest confidence detection per object
+   - Uses IoU (Intersection over Union) threshold for filtering
 
-**Technical Implementation:**
-- **RecipeView.swift**: Rich recipe display with structured layout
-- **Models/Recipe.swift**: Complete data models with proper serialization
-```swift
-// Data structures
-struct Recipe {
-    - Complete recipe information
-    - Codable for JSON serialization
-    - UUID for unique identification
-}
-struct Ingredient {
-    - Name, amount, unit, notes
-    - displayText computed property
-}
-struct Instruction {
-    - Step number, text, time, temperature, tips
-}
-```
+4. **Calculate Loss → Box + Classification + Distribution Focal Loss**
+   - **Box Loss**: Measures accuracy of bounding box coordinates
+   - **Classification Loss**: Measures accuracy of class predictions  
+   - **Distribution Focal Loss**: Advanced loss for precise coordinate regression
+   - Total loss combines all three with weights: box=7.5, cls=0.5, dfl=1.5
 
-### 4. Settings Tab - User Preferences
-**Functionality:**
-- Local AI processing options
-- Dietary preferences and restrictions
-- Preferred cuisine type selection
-- App version and AI model information
+5. **Backpropagation → Update Model Parameters**
+   - Gradients are calculated for all model parameters
+   - AdamW optimizer updates weights with learning rate scheduling
+   - L2 regularization prevents overfitting
 
-**Technical Implementation:**
-- SwiftUI Form with Toggle and Picker controls
-- @State property wrappers for settings persistence
-- Structured sections for different preference categories
+6. **Repeat Training → Until Convergence**
+   - Process continues for multiple epochs (2-3 for quick training)
+   - Model performance improves with each iteration
+   - Early stopping prevents overfitting
 
-## Backend API Features & Implementation
+### Data Types Flow
+**User Upload**: UIImage → Data (JPEG/PNG)  
+*Example: User selects photo from camera roll → 2.3MB JPEG data*
 
-### FastAPI Architecture & Endpoints
-```python
-# Core endpoints
-GET /                    # API status and version info
-GET /health             # Health check with timestamp
-POST /api/detect        # Image upload & ingredient detection
-POST /api/recipes       # Recipe generation from ingredients
-GET /docs               # Interactive Swagger documentation
-```
+**Backend**: UploadFile → bytes → PIL.Image  
+*Example: FastAPI receives multipart file → 2,300,000 bytes → PIL Image object (640×480 RGB)*
 
-### Ingredient Detection Service (`/api/detect`)
-**Functionality:**
-- **Image Validation**: Check file format (JPEG/PNG)
-- **Image Processing**: PIL-based image preprocessing for AI model
-- **YOLOv8n AI Recognition**: Real neural network inference for food detection
-- **Smart Filtering**: Extract only food-related classes from 80 COCO categories
-- **Response**: Detected ingredients with actual confidence scores (0.25+ threshold)
-- **Processing Time**: Real-time inference (~190ms end-to-end)
+**YOLO Input**: PIL.Image  
+*Example: PIL Image (640×480×3) ready for model inference*
 
-**Technical Implementation:**
-```python
-# Key backend features
-- FastAPI with automatic OpenAPI docs
-- CORS middleware for iOS cross-origin requests
-- Pydantic models for request/response validation
-- YOLOv8n model integration with ultralytics
-- Real-time computer vision inference
-- Intelligent fallback system for error handling
+**YOLO Output**: List[Results] with boxes, confidence, classes  
+*Example: 3 detections with boxes=[(100,50,200,150), (300,200,400,300)], conf=[0.85, 0.92], cls=[0, 15]*
 
-async def detect_ingredients(image: UploadFile):
-    # Image validation and PIL processing
-    # YOLOv8 neural network inference
-    # Food class filtering and mapping
-    # Structured JSON response with real confidence scores
-```
+**Processing**: Filter food classes, extract coordinates  
+*Example: Filter to food classes only → ["Apple", "Banana"] with confidence [0.85, 0.92]*
 
-### Recipe Generation Service (`/api/recipes`)
-**Functionality:**
-- **Input Parameters**: Ingredient list, meal type, dietary restrictions, preferred cuisine
-- **Mock LLM Generation**: Create structured recipes based on input
-- **Complete Recipe**: Ingredients, steps, nutrition, tags
-- **Customized Content**: Adjust content based on user preferences
-- **Processing Time**: Simulate LLM processing time (2 seconds)
+**Response**: DetectionResponse (ingredients, confidence, time)  
+*Example: {"ingredients": ["Apple", "Banana"], "confidence": [0.85, 0.92], "processing_time": 1.2}*
 
-**Technical Implementation:**
-```python
-# Recipe generation logic
-class RecipeRequest(BaseModel):
-    ingredients: List[str]
-    mealCraving: str
-    dietaryRestrictions: List[str] = []
-    preferredCuisine: str = "Any"
-
-def generate_mock_recipe(request: RecipeRequest) -> Recipe:
-    # Dynamic recipe creation based on detected ingredients
-    # Structured instruction generation with timing and tips
-    # Nutrition information calculation
-    # Tag generation based on cuisine and meal type
-```
-
-### Data Flow Architecture
-```
-iOS App Request → FastAPI Validation → YOLOv8 AI Processing → Structured Response
-Image Upload → PIL Processing → YOLO Inference → Ingredient JSON
-Recipe Request → Parameter Validation → LLM Simulation → Complete Recipe JSON
-```
-
-## 📈 YOLOv8 Data Processing Pipeline
-
-### Real-time Food Detection Data Flow
-```
-User Upload (multipart/form-data)
-    ↓
-UploadFile Object
-    ↓
-Binary Image Data (bytes)
-    ↓
-PIL.Image Object
-    ↓
-YOLO Inference Input
-    ↓
-Detection Results (tensors)
-    ↓
-Python Data Structures (list, float)
-    ↓
-Pydantic Model (DetectionResponse)
-    ↓
-JSON Response
-    ↓
-HTTP Response to User
-```
-
-### 🎯 Actual Processing Example
-
-**Complete Banana Detection Call Chain:**
-
-1. `POST /api/detect (image=banana.png)` - HTTP request with image upload
-2. `detect_ingredients(image=<UploadFile>)` - FastAPI route handler execution
-3. `image.read() → bytes` - Extract binary image data from upload
-4. `Image.open(io.BytesIO(bytes)) → PIL.Image` - Convert bytes to PIL image object
-5. `yolo_model(pil_image, conf=0.25) → Results` - Execute YOLOv8 neural network inference
-6. `result.boxes[0].cls → tensor([46.])` - Extract class prediction tensor
-7. `int(tensor([46.])) → 46` - Convert PyTorch tensor to Python integer
-8. `yolo_model.names[46] → 'banana'` - Map class ID to COCO class name
-9. `YOLO_TO_FOOD_MAPPING['banana'] → 'Banana'` - Transform to user-friendly format
-10. `DetectionResponse(ingredients=['Banana'], confidence=[0.91], ...)` - Structure response model
-11. `JSON: {"ingredients":["Banana"],"confidence":[0.91],"processing_time":0.19}` - Serialize and return
-
-**Performance Metrics:**
-- **Inference Time**: 74.6ms (neural network processing)
-- **Total Processing**: 190ms (end-to-end)
-- **Accuracy**: 91% confidence on test images
-- **Model Size**: 6.2MB (edge-optimized YOLOv8n)
-
-## Mock AI Services Implementation
-
-### YOLO Ingredient Detection Simulation
-**Technical Details:**
-- Predefined pool of 15 common ingredients
-- Random selection of 4-8 ingredients per request
-- Confidence score generation (0.7-0.95 range)
-- Realistic processing time simulation (asyncio.sleep)
-
-```python
-MOCK_INGREDIENTS = [
-    "Tomatoes", "Bell Peppers", "Onions", "Carrots", "Broccoli",
-    "Cheese", "Milk", "Eggs", "Chicken Breast", "Garlic",
-    # ... more ingredients
-]
-
-# Simulation logic
-detected_count = random.randint(4, 8)
-detected_ingredients = random.sample(MOCK_INGREDIENTS, detected_count)
-confidence_scores = [round(random.uniform(0.7, 0.95), 2) for _ in detected_ingredients]
-```
-
-### LLM Recipe Generation Simulation  
-**Technical Details:**
-- Recipe creation based on detected ingredients
-- Dynamic content adjustment based on meal type
-- Complete cooking instruction generation
-- Nutrition information and practical cooking tips
-
-```python
-def generate_mock_recipe(request: RecipeRequest) -> Recipe:
-    # Use detected ingredients as base
-    # Create structured ingredients with measurements
-    # Generate step-by-step instructions with timing
-    # Add nutrition facts and cooking tips
-    # Tag categorization based on cuisine and preferences
-```
+**iOS**: [String] food names, [Double] confidence scores  
+*Example: ["Apple", "Banana"] and [0.85, 0.92] displayed in UI*
 
 ## Quick Start Guide
 
@@ -273,6 +102,22 @@ source venv/bin/activate  # Activate virtual environment
 python main.py            # Start FastAPI server
 ```
 Server will start at `http://localhost:8000`
+
+### 1.1 FastAPI quick refs
+
+- **Base URL**: `http://localhost:8000`
+- **Interactive docs (Swagger UI)**: `http://localhost:8000/docs`
+- **OpenAPI schema**: `http://localhost:8000/openapi.json`
+
+Call the detect endpoint with curl (multipart image upload):
+```bash
+curl -X POST \
+  -F "image=@test.png" \
+  http://localhost:8000/api/detect
+```
+
+Tip: to use your fine‑tuned model, update `backend/main.py` model path to `food101_training/food101_yolov8n/weights/best.pt` (or `yolov8n_food101_finetuned.pt`).
+
 
 ### 2. Run iOS App
 ```bash
@@ -287,7 +132,6 @@ Select iOS simulator in Xcode and press Play to run
 4. Enter desired meal type
 5. View generated complete recipe
 
-### 4. API Documentation
-Visit `http://localhost:8000/docs` for interactive Swagger documentation
+
 
 
