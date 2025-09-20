@@ -105,14 +105,13 @@ def fine_tune_model(dataset_config, pretrained_model, epochs=2, batch_size=16, i
     # Load the pretrained YOLOv8n model
     model = YOLO(pretrained_model)
 
-    # Check device (support MPS for Mac M1/M2/M3)
-    if torch.cuda.is_available():
-        device = 'cuda'
-    elif torch.backends.mps.is_available():
-        device = 'mps'
-    else:
-        device = 'cpu'
+    # Force CPU training for stability (MPS has validation bugs)
+    device = 'cpu'
     print(f"🖥️  Training device: {device}")
+
+    # Override any automatic device detection
+    import torch
+    torch.backends.mps.is_available = lambda: False  # Force disable MPS
     print(f"💾 Model will be saved every epoch")
     print("="*60)
 
@@ -175,7 +174,8 @@ def fine_tune_model(dataset_config, pretrained_model, epochs=2, batch_size=16, i
             verbose=True,
             plots=False,  # Disable plots for stability on MPS
             save_json=False,   # Disable JSON saving
-            val=False         # Completely disable validation
+            val=True,         # Enable validation with our train/val split!
+            amp=False         # Disable AMP to avoid MPS validation bug
         )
 
         end_time = datetime.now()
@@ -253,13 +253,22 @@ def main():
         print("🍳 Food-101 YOLOv8n Fine-tuning Script")
         print("=" * 50)
 
-        # Setup environment - set use_tiny=True for Food-101-Tiny
-        dataset_path, pretrained_model = setup_training_environment(use_tiny=True)
+        # Use complete merged food dataset for final training
+        dataset_path = "/Users/jc/Desktop/MSD/capstone/edge-ai-kitchen-assistant/datasets/merged_food_dataset/data.yaml"
+        pretrained_model = "yolov8n.pt"
 
-        # Determine training project name based on dataset
-        is_tiny = "tiny" in dataset_path
-        project_name = "food101_tiny_training" if is_tiny else "food101_training"
-        run_name = "food101_tiny_yolov8n" if is_tiny else "food101_yolov8n"
+        if not Path(dataset_path).exists():
+            raise FileNotFoundError(f"Dataset config not found: {dataset_path}")
+        if not Path(pretrained_model).exists():
+            raise FileNotFoundError(f"Pretrained model not found: {pretrained_model}")
+
+        print(f"✅ Using fixed merged dataset: {dataset_path}")
+        print(f"✅ Pretrained model: {pretrained_model}")
+
+        # Use merged food dataset for full training (20 epochs)
+        is_tiny = False  # We're using our merged dataset, not tiny
+        project_name = "kitchen_assistant_training_full"
+        run_name = "merged_food_yolov8n_20epochs"
 
         # Check if we should resume from existing checkpoint
         best_model_path = Path(f"{project_name}/{run_name}/weights/best.pt")
@@ -268,32 +277,19 @@ def main():
             pretrained_model = str(best_model_path)
             print(f"🚀 Resuming training from: {pretrained_model}")
 
-        # Update dataset configuration
-        dataset_config = update_dataset_config(dataset_path)
+        # Use dataset path directly (already configured correctly)
+        dataset_config = dataset_path
 
-        # Fine-tune the model with adjusted parameters for tiny dataset
-        if is_tiny:
-            # Tiny dataset parameters - faster training
-            training_results = fine_tune_model(
-                dataset_config=dataset_config,
-                pretrained_model=pretrained_model,
-                epochs=10,     # Fewer epochs for tiny dataset
-                batch_size=16, # Can use larger batch size
-                img_size=416,  # Keep smaller image size
-                project_name=project_name,
-                run_name=run_name
-            )
-        else:
-            # Full dataset parameters
-            training_results = fine_tune_model(
-                dataset_config=dataset_config,
-                pretrained_model=pretrained_model,
-                epochs=20,     # Extended training for full dataset
-                batch_size=8,  # Reduced for memory constraints
-                img_size=416,  # Reduced for faster training
-                project_name=project_name,
-                run_name=run_name
-            )
+        # Full training with 20 epochs
+        training_results = fine_tune_model(
+            dataset_config=dataset_config,
+            pretrained_model=pretrained_model,
+            epochs=20,       # Full training
+            batch_size=8,    # Increase batch size for better training
+            img_size=640,    # Standard image size
+            project_name=project_name,
+            run_name=run_name
+        )
 
         # Copy the best model
         best_model_path = copy_best_model(project_name, run_name)

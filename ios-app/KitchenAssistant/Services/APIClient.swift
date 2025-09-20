@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 
 class APIClient: ObservableObject {
-    private let baseURL = "http://localhost:8000" // Backend server URL
+    private let baseURL = "http://127.0.0.1:8000" // Backend server URL
     private let session = URLSession.shared
     
     enum APIError: Error, LocalizedError {

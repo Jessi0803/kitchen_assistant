@@ -17,10 +17,10 @@ app = FastAPI(
 )
 
 # Initialize YOLO model
-model_path = os.path.join(os.path.dirname(__file__), 'yolov8n.pt')
+model_path = os.path.join(os.path.dirname(__file__), 'best.pt')
 if not os.path.exists(model_path):
     # If model not in backend folder, try current directory
-    model_path = 'yolov8n.pt' #yolov8n.pt
+    model_path = 'best.pt' #yolov8n.pt
 
 try:
     yolo_model = YOLO(model_path)
@@ -39,22 +39,19 @@ FOOD_CLASSES = {
     'spoon', 'bowl'
 }
 
-# Mapping common food items that YOLO can detect
+# Mapping for fine-tuned food detection model
 YOLO_TO_FOOD_MAPPING = {
-    'apple': 'Apple',
-    'banana': 'Banana',
-    'sandwich': 'Sandwich',
-    'orange': 'Orange',
+    'beef': 'Beef',
+    'pork': 'Pork',
+    'chicken': 'Chicken',
+    'butter': 'Butter',
+    'cheese': 'Cheese',
+    'milk': 'Milk',
     'broccoli': 'Broccoli',
     'carrot': 'Carrot',
-    'hot dog': 'Hot Dog',
-    'pizza': 'Pizza',
-    'donut': 'Donut',
-    'cake': 'Cake',
-    'bottle': 'Bottle',
-    'wine glass': 'Glass',
-    'cup': 'Cup',
-    'bowl': 'Bowl'
+    'cucumber': 'Cucumber',
+    'lettuce': 'Lettuce',
+    'tomato': 'Tomato'
 }
 
 # CORS middleware for iOS app
@@ -164,7 +161,7 @@ async def detect_ingredients(image: UploadFile = File(...)):
         pil_image = Image.open(io.BytesIO(image_data))
 
         # Run YOLO inference
-        results = yolo_model(pil_image, conf=0.25)  # confidence threshold
+        results = yolo_model(pil_image, conf=0.1)  # confidence threshold for fine-tuned model
 
         detected_ingredients = []
         confidence_scores = []
