@@ -29,47 +29,71 @@ iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
 - **Python FastAPI Backend** with RESTful API services  
 - **End-to-End Data Flow** from camera capture to recipe display
 
-## Next Development Steps
 
-### Local AI Integration
-- **iOS Core ML Integration**: fintune Yolov8n on food101 dataset
-- **Local LLM Service**: Integrate lightweight language model for basic recipe generation
+## Finetuning YOLOv8n (CPU)
+We fine-tune `yolov8n.pt` on our food dataset using a CPU.
+
+### How to run
+```bash
+cd backend
+source fresh_venv/bin/activate
+python3 fine_tune_yolo_cpu_aug.py
+```
+
+### Training process (key settings)
+- device: CPU (stable on this machine)
+- epochs: 30, batch: 8, imgsz: 640, workers: 2
+- optimizer: AdamW (lr0=0.0005, weight_decay=0.0005, warmup_epochs=2)
+- augmentations: moderate (hsv_h=0.01, hsv_s=0.3, hsv_v=0.2, fliplr=0.5, mosaic=0.3, mixup=0.0)
+- val/plots: enabled; metrics and plots are saved every run
+- outputs: `kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/`
+
+### Training Results
+- Overall metrics and losses over epochs:
+![YOLO Training Results](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/results.png)
+
+- Class-wise performance (normalized confusion matrix):
+![Confusion Matrix (Normalized)](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/confusion_matrix_normalized.png)
+
+- Qualitative validation predictions:
+![Validation Predictions](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/val_batch0_pred.jpg)
 
 
-## YOLO Model Training Process
+## Dataset
+We use `datasets/merged_food_dataset` with 11 classes: 
+`beef, pork, chicken, butter, cheese, milk, broccoli, carrot, cucumber, lettuce, tomato`.
 
-### Fine-tuning Pipeline
-The YOLO model undergoes a comprehensive training process to learn food detection:
+Dataset config (`data.yaml`) points to `train/images` and `val/images` under the dataset root, e.g.:
+```yaml
+path: /Users/jc/Desktop/MSD/capstone/edge-ai-kitchen-assistant/datasets/merged_food_dataset
+train: train/images
+val: val/images
+nc: 11
+names:
+  0: beef
+  1: pork
+  2: chicken
+  3: butter
+  4: cheese
+  5: milk
+  6: broccoli
+  7: carrot
+  8: cucumber
+  9: lettuce
+  10: tomato
+```
 
-1. **Image Input → YOLO Model**
-   - Raw images are preprocessed and fed into the YOLOv8n architecture
-   - Feature extraction through convolutional layers at multiple scales
+In the backend, detected class names are mapped to user-friendly names before returning to the app.
 
-2. **Model Output → Multiple Candidate Bounding Boxes + Class Probabilities**
-   - Model generates thousands of candidate detections
-   - Each detection includes bounding box coordinates and class probabilities
-   - Raw predictions need filtering and refinement
+## Why not MPS (Apple Silicon GPU)
+We attempted MPS training on Python 3.13 with PyTorch ≥2.6 and Ultralytics 8.x, but ran into recurring issues:
+- Negative-dimension/validation errors on MPS during training/metrics
+- Version constraints on Python 3.13 limit known good torch+ultralytics combos
+- `torch.load` security change (`weights_only=True`) required special handling
 
-3. **Non-Maximum Suppression → Filter Best Bounding Boxes**
-   - Removes overlapping detections for the same object
-   - Keeps only the highest confidence detection per object
-   - Uses IoU (Intersection over Union) threshold for filtering
+CPU training is stable and produced strong results (e.g., good mAP50). If we must use MPS, a more compatible stack is Python 3.11 + torch 2.1.0 + ultralytics 8.0.120 with conservative settings (amp=False, small batch/imgsz, minimal augments) and validating on CPU — but this requires a separate environment.
 
-4. **Calculate Loss → Box + Classification + Distribution Focal Loss**
-   - **Box Loss**: Measures accuracy of bounding box coordinates
-   - **Classification Loss**: Measures accuracy of class predictions  
-   - **Distribution Focal Loss**: Advanced loss for precise coordinate regression
-   - Total loss combines all three with weights: box=7.5, cls=0.5, dfl=1.5
 
-5. **Backpropagation → Update Model Parameters**
-   - Gradients are calculated for all model parameters
-   - AdamW optimizer updates weights with learning rate scheduling
-   - L2 regularization prevents overfitting
-
-6. **Repeat Training → Until Convergence**
-   - Process continues for multiple epochs (2-3 for quick training)
-   - Model performance improves with each iteration
-   - Early stopping prevents overfitting
 
 ### Data Types Flow
 **User Upload**: UIImage → Data (JPEG/PNG)  
@@ -82,16 +106,16 @@ The YOLO model undergoes a comprehensive training process to learn food detectio
 *Example: PIL Image (640×480×3) ready for model inference*
 
 **YOLO Output**: List[Results] with boxes, confidence, classes  
-*Example: 3 detections with boxes=[(100,50,200,150), (300,200,400,300)], conf=[0.85, 0.92], cls=[0, 15]*
+*Example: 2 detections with boxes=[(90,40,210,160), (300,200,420,320)], conf=[0.91, 0.84], cls=["tomato", "cheese"]*
 
-**Processing**: Filter food classes, extract coordinates  
-*Example: Filter to food classes only → ["Apple", "Banana"] with confidence [0.85, 0.92]*
+**Processing**: Map model class names → human-friendly names, keep confidences  
+*Example: {ingredients: ["Tomato", "Cheese"], confidence: [0.91, 0.84]}*
 
 **Response**: DetectionResponse (ingredients, confidence, time)  
-*Example: {"ingredients": ["Apple", "Banana"], "confidence": [0.85, 0.92], "processing_time": 1.2}*
+*Example: {"ingredients": ["Tomato", "Cheese"], "confidence": [0.91, 0.84], "processing_time": 1.2}*
 
 **iOS**: [String] food names, [Double] confidence scores  
-*Example: ["Apple", "Banana"] and [0.85, 0.92] displayed in UI*
+*Example: ["Tomato", "Cheese"] and [0.91, 0.84] displayed in UI*
 
 ## Quick Start Guide
 
@@ -103,20 +127,6 @@ python main.py            # Start FastAPI server
 ```
 Server will start at `http://localhost:8000`
 
-### 1.1 FastAPI quick refs
-
-- **Base URL**: `http://localhost:8000`
-- **Interactive docs (Swagger UI)**: `http://localhost:8000/docs`
-- **OpenAPI schema**: `http://localhost:8000/openapi.json`
-
-Call the detect endpoint with curl (multipart image upload):
-```bash
-curl -X POST \
-  -F "image=@test.png" \
-  http://localhost:8000/api/detect
-```
-
-Tip: to use your fine‑tuned model, update `backend/main.py` model path to `food101_training/food101_yolov8n/weights/best.pt` (or `yolov8n_food101_finetuned.pt`).
 
 
 ### 2. Run iOS App
@@ -135,3 +145,9 @@ Select iOS simulator in Xcode and press Play to run
 
 
 
+## Next Development Steps
+
+### Local AI Integration
+- **On-device food detection (Core ML)**: Convert `best.pt` to Core ML, embed in iOS app, and add local inference path
+- **Local/Server toggle**: In Settings, allow switching between Core ML (local) and FastAPI (server) for detection; route `CameraView.processImage()` accordingly
+- **Local LLM Service**: Integrate lightweight language model for basic recipe generation
