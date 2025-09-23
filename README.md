@@ -48,6 +48,12 @@ python3 fine_tune_yolo_cpu_aug.py
 - val/plots: enabled; metrics and plots are saved every run
 - outputs: `kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/`
 
+#### Data augmentation (on-the-fly)
+- Augmentations are applied per batch/epoch in memory; original files are not changed.
+- Each batch re-samples transforms (flip, color jitter, scale, translate, mosaic/mixup, etc.). Images are not "flipped back"—the change is one-time for that batch.
+- Labels (bounding boxes) are transformed consistently with the image.
+- Validation and inference avoid strong augmentations (typically only resize/letterbox).
+
 ### Training Results
 - Overall metrics and losses over epochs:
 ![YOLO Training Results](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/results.png)
