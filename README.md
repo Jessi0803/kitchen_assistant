@@ -15,7 +15,7 @@
 ```
 iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
                                ↓
-                            Yolonv8 for ingredient detection
+                            Fine-tuned Yolonv8 for ingredient detection
                             Mock AI Services for recipe generation
 ```
 
@@ -31,7 +31,7 @@ iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
 
 
 ## Finetuning YOLOv8n (CPU)
-We fine-tune `yolov8n.pt` on our food dataset using a CPU.
+I fine-tune `yolov8n.pt` on my food dataset using a CPU.
 
 ### How to run
 ```bash
@@ -40,7 +40,7 @@ source fresh_venv/bin/activate
 python3 fine_tune_yolo_cpu_aug.py
 ```
 
-### Training process (key settings)
+### Training process
 - device: CPU (stable on this machine)
 - epochs: 30, batch: 8, imgsz: 640, workers: 2
 - optimizer: AdamW (lr0=0.0005, weight_decay=0.0005, warmup_epochs=2)
@@ -55,43 +55,32 @@ python3 fine_tune_yolo_cpu_aug.py
 - Class-wise performance (normalized confusion matrix):
 ![Confusion Matrix (Normalized)](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/confusion_matrix_normalized.png)
 
-- Qualitative validation predictions:
-![Validation Predictions](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/val_batch0_pred.jpg)
+Short summary:
+- Final (epoch 30) precision ≈ 0.865, recall ≈ 0.857
+- Final mAP50 ≈ 0.881, mAP50-95 ≈ 0.685
+- Train/val losses steadily decreased and plateaued near the end, indicating stable convergence
+
+
+### Losses (what they mean)
+- box_loss: bounding box regression loss. Measures how well predicted boxes overlap with ground truth (IoU-based). Lower is better localization.
+- cls_loss: classification loss. Measures how well the model predicts the correct class probabilities (BCE/Logits). Lower is better classification.
+- dfl_loss: Distribution Focal Loss. Models box coordinates as discrete distributions for finer localization. Lower is sharper, more precise box edges.
+
+Tips: Typically all three decrease together. As box_loss and dfl_loss drop, mAP50-95 improves; as cls_loss improves, precision/recall increase.
 
 
 ## Dataset
-We use `datasets/merged_food_dataset` with 11 classes: 
+I use `datasets/merged_food_dataset` with 11 classes: 
 `beef, pork, chicken, butter, cheese, milk, broccoli, carrot, cucumber, lettuce, tomato`.
 
-Dataset config (`data.yaml`) points to `train/images` and `val/images` under the dataset root, e.g.:
-```yaml
-path: /Users/jc/Desktop/MSD/capstone/edge-ai-kitchen-assistant/datasets/merged_food_dataset
-train: train/images
-val: val/images
-nc: 11
-names:
-  0: beef
-  1: pork
-  2: chicken
-  3: butter
-  4: cheese
-  5: milk
-  6: broccoli
-  7: carrot
-  8: cucumber
-  9: lettuce
-  10: tomato
-```
-
-In the backend, detected class names are mapped to user-friendly names before returning to the app.
 
 ## Why not MPS (Apple Silicon GPU)
-We attempted MPS training on Python 3.13 with PyTorch ≥2.6 and Ultralytics 8.x, but ran into recurring issues:
+I attempted MPS training on Python 3.13 with PyTorch ≥2.6 and Ultralytics 8.x, but ran into recurring issues:
 - Negative-dimension/validation errors on MPS during training/metrics
 - Version constraints on Python 3.13 limit known good torch+ultralytics combos
 - `torch.load` security change (`weights_only=True`) required special handling
 
-CPU training is stable and produced strong results (e.g., good mAP50). If we must use MPS, a more compatible stack is Python 3.11 + torch 2.1.0 + ultralytics 8.0.120 with conservative settings (amp=False, small batch/imgsz, minimal augments) and validating on CPU — but this requires a separate environment.
+CPU training is stable and produced strong results (e.g., good mAP50). If I must use MPS, a more compatible stack is Python 3.11 + torch 2.1.0 + ultralytics 8.0.120 with conservative settings (amp=False, small batch/imgsz, minimal augments) and validating on CPU — but this requires a separate environment.
 
 
 
