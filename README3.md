@@ -290,30 +290,30 @@ request.imageCropAndScaleOption = .scaleFit
 
 ## 7. 總結：Server vs iOS 的核心差異
 
-| 比較項目 | Server 端（Python + PyTorch） | iOS 端（Swift + CoreML） | 說明 |
-|---------|---------------------------|----------------------|------|
-| **🗂️ 模型格式** | `.pt` (PyTorch 序列化檔) | `.mlpackage` (CoreML) 或 `.onnx` | `.pt` 包含權重+metadata；CoreML/ONNX 只有權重 |
-| **📝 類別名稱來源** | 從 `.pt` 檔內嵌的 `names` 字典動態讀取 | 手動在 Swift 程式碼中維護陣列 | Server 端：`model.names[0]`；iOS 端：`classNames[0]` |
-| **🔄 模型更新後** | 自動同步，無需修改程式碼 | 需手動同步更新 `classNames` 陣列 | 忘記同步會導致類別名稱錯誤或 crash |
-| **⚠️ 錯誤風險** | 低（模型和名稱綁定） | 高（陣列順序錯、數量不符） | iOS 端容易因新增/刪除/重排類別而出錯 |
-| **🖼️ 圖像輸入源** | `UploadFile` → `bytes` → `PIL.Image` | `UIImage` → `CGImage` → `CVPixelBuffer` | 不同平台的圖像物件 |
-| **📐 預處理方式** | `ultralytics` 自動 Letterboxing（補黑邊保持長寬比） | Vision 框架，需手動設定 `.scaleFit`（預設 `.scaleFill` 會變形） | 預處理不一致是主要精度損失原因 |
-| **📦 預處理後格式** | `torch.Tensor` <br> 形狀: `[1, 3, 640, 640]` <br> 型態: `float32` | `CVPixelBuffer` → CoreML 視為 `MLMultiArray` <br> 形狀: `[1, 3, 640, 640]` <br> 型態: `float32` | 形狀和型態等價，但視覺內容因縮放方式而異 |
-| **🧠 模型推理** | PyTorch 引擎 | CoreML 引擎 | 底層運算子實現有微小差異，會累積誤差 |
-| **📤 模型原始輸出** | `torch.Tensor` <br> 形狀: `[1, 16, 8400]` | `MLMultiArray` <br> 形狀: `[1, 16, 8400]` | 16 = 4座標 + 1物體信心度 + 11分類信心度；8400 個候選框 |
-| **🧹 NMS 處理** | `ultralytics` 框架自動處理 <br> IoU 閾值: 0.7 | 可內置於模型（`nms=True`）或手動實現 <br> 手動實現常用 IoU: 0.45 | NMS 參數不一致會影響最終結果 |
-| **🔧 後處理複雜度** | 自動，無需手動解析 | 需手動解析 `[1, 16, 8400]` 張量<br>或使用 Vision 框架的 `VNRecognizedObjectObservation` | 手動解析易出錯且效率低 |
-| **📊 後處理輸入** | `Results` 物件（已處理好）<br>包含 `.boxes.xyxy`, `.boxes.conf`, `.boxes.cls` | 原始 `MLMultiArray [1, 16, 8400]`<br>或 `[VNRecognizedObjectObservation]` | Server 端使用高階封裝；iOS 端需從原始數據開始 |
-| **🎯 最終輸出格式** | JSON dict <br> `{"ingredients": ["Beef", "Pork"], "confidence": [0.88, 0.75]}` | `[String]` 陣列 <br> `["Beef", "Pork"]` | 不同的資料結構 |
-| **💻 開發複雜度** | 極簡：1 行程式碼搞定推理 <br> `results = model('image.jpg')` | 中等：需理解 Vision 框架、CoreML、後處理邏輯 <br> 30-50+ 行程式碼 | Server 端高度封裝；iOS 端需手動處理多個環節 |
-| **🛠️ 除錯難度** | 容易（框架提供完整錯誤訊息） | 困難（需追蹤張量形狀、數值範圍） | iOS 端需手動驗證每個處理步驟 |
-| **📱 依賴環境** | Python + `ultralytics` + PyTorch | Swift + Vision + CoreML | 不同的技術棧 |
-| **🌐 網路需求** | 需要（上傳圖片到伺服器） | 無（本地推理） | iOS 端可離線運作 |
-| **🔒 隱私性** | 低（圖片需上傳） | 高（圖片不離開裝置） | iOS 端更保護使用者隱私 |
-| **💰 營運成本** | 高（伺服器、頻寬） | 低（無伺服器費用） | iOS 端長期成本較低 |
-| **⚡ 運算資源** | 可使用多核 CPU、大記憶體 | 受限於裝置硬體（手機/平板） | Server 端可處理更複雜的模型 |
-| **🔄 模型更新** | 簡單（替換 `.pt` 檔，重啟服務） | 複雜（需重新打包 App，通過審核） | Server 端更新更靈活 |
-| **📈 精度** | 最高（原始模型） | 略低於 Server（轉換損失 + 預處理差異） | 轉換過程中運算子實現差異會累積 |
+| 比較項目 | Server 端（Python + PyTorch） | iOS 端（Swift + CoreML） | 詳細說明 |
+|---------|---------------------------|----------------------|----------|
+| **模型格式** | `.pt` (PyTorch 序列化檔) | `.mlpackage` (CoreML) 或 `.onnx` | `.pt` 是 Python 的序列化格式，除了模型權重外，還包含訓練配置、類別名稱、優化器狀態等 metadata。CoreML/ONNX 是跨平台通用格式，為了相容性只保留純數學運算的權重參數，所有 metadata 都會在轉換過程中被移除。 |
+| **類別名稱來源** | 從 `.pt` 檔內嵌的 `names` 字典動態讀取 | 手動在 Swift 程式碼中維護陣列 | Server 端在訓練時會將 `data.yaml` 的類別名稱自動儲存到 `.pt` 檔中，使用 `model.names[0]` 即可取得。iOS 端因為 CoreML/ONNX 不保留 metadata，必須在程式碼中手動建立 `let classNames = ["apple", "banana", ...]` 陣列來對應模型輸出的數字索引。 |
+| **模型更新後** | 自動同步，無需修改程式碼 | 需手動同步更新 `classNames` 陣列 | Server 端重新訓練模型後，新的類別名稱會自動儲存在新的 `.pt` 檔中，程式碼不需要修改。iOS 端重新訓練模型後，必須手動檢查 `data.yaml` 並同步更新 Swift 程式碼中的 `classNames` 陣列，否則會出現類別名稱錯誤。 |
+| **錯誤風險** | 低（模型和名稱綁定） | 高（陣列順序錯、數量不符） | Server 端因為類別名稱和模型綁在同一個檔案中，不會出現不同步問題。iOS 端容易發生三種錯誤：(1) 新增類別但忘記擴充陣列 → crash；(2) 類別順序改變但陣列未同步 → 顯示錯誤名稱；(3) 刪除類別但陣列未移除 → 索引混亂。 |
+| **圖像輸入源** | `UploadFile` → `bytes` → `PIL.Image` | `UIImage` → `CGImage` → `CVPixelBuffer` | Server 端從 HTTP 請求接收二進位資料，透過 Python 的 PIL 函式庫載入為 Image 物件。iOS 端從相機或相簿取得 UIImage（iOS 原生圖像格式），轉換為 CGImage（Core Graphics 的點陣圖表示），最後包裝成 CVPixelBuffer（視訊處理用的像素緩衝區）供 CoreML 使用。 |
+| **預處理方式** | `ultralytics` 自動 Letterboxing（補黑邊保持長寬比） | Vision 框架，需手動設定 `.scaleFit`（預設 `.scaleFill` 會變形） | Server 端的 `ultralytics` 會自動執行 Letterboxing：將圖片等比例縮放到 640x640 的框內，不足的部分填充黑邊，確保物體不變形。iOS 端使用 Vision 框架時，預設的 `.scaleFill` 會強制拉伸圖片成正方形，導致物體嚴重變形，必須改用 `.scaleFit` 才能達到相同效果。這是造成精度差異的主要原因。 |
+| **預處理後格式** | `torch.Tensor` <br> 形狀: `[1, 3, 640, 640]` <br> 型態: `float32` | `CVPixelBuffer` → CoreML 視為 `MLMultiArray` <br> 形狀: `[1, 3, 640, 640]` <br> 型態: `float32` | 兩個平台預處理後的資料在數學上是等價的：batch size=1、3 個顏色通道（RGB）、640x640 像素、32 位浮點數（0.0-1.0 範圍）。但關鍵差異在於視覺內容：如果 iOS 端使用錯誤的縮放選項，即使張量形狀相同，圖像內容也會因變形而不同，導致模型無法正確辨識。 |
+| **模型推理** | PyTorch 引擎 | CoreML 引擎 | Server 端使用 PyTorch 的 C++ 後端進行張量運算，支援完整的算子集合。iOS 端使用 Apple 的 CoreML 引擎，基於 Metal Performance Shaders (MPS) 在 GPU 上執行運算。雖然理論上執行相同的數學運算，但底層實現的細微差異（如浮點數精度處理、矩陣乘法算法）會累積成微小誤差。 |
+| **模型原始輸出** | `torch.Tensor` <br> 形狀: `[1, 16, 8400]` | `MLMultiArray` <br> 形狀: `[1, 16, 8400]` | 模型輸出是一個三維張量：batch=1（單張圖片）、16 個特徵（前 4 個是邊界框的 x, y, w, h 座標，第 5 個是物體存在的信心度，後 11 個是各類別的分類分數）、8400 個候選框（來自不同尺度的特徵圖）。兩端的張量格式完全相同，只是封裝的資料結構不同（PyTorch 用 Tensor，CoreML 用 MLMultiArray）。 |
+| **NMS 處理** | `ultralytics` 框架自動處理 <br> IoU 閾值: 0.7 | 可內置於模型（`nms=True`）或手動實現 <br> 手動實現常用 IoU: 0.45 | Non-Maximum Suppression (NMS) 用於消除重疊的邊界框。Server 端的 `ultralytics` 使用高效的 C++ 實現，IoU 閾值 0.7 表示重疊度超過 70% 的框會被合併。iOS 端可在轉換時加入 `nms=True` 將 NMS 烘焙到模型中，或在 Swift 中手動實現。手動實現常用較嚴格的 0.45 閾值，導致過濾邏輯不同，可能移除正確的檢測結果。 |
+| **後處理複雜度** | 自動，無需手動解析 | 需手動解析 `[1, 16, 8400]` 張量<br>或使用 Vision 框架的 `VNRecognizedObjectObservation` | Server 端的 `ultralytics` 自動將 `[1, 16, 8400]` 的原始輸出解析成結構化的 `Results` 物件，包含座標、信心度、類別等欄位。iOS 端必須手動遍歷 8400 個候選框，對每個框計算最終信心度（物體信心度 × 最高類別分數），過濾低信心度結果，執行 NMS，最後才能得到最終檢測結果。或者使用 Vision 框架讓它自動處理。 |
+| **後處理輸入** | `Results` 物件（已處理好）<br>包含 `.boxes.xyxy`, `.boxes.conf`, `.boxes.cls` | 原始 `MLMultiArray [1, 16, 8400]`<br>或 `[VNRecognizedObjectObservation]` | Server 端直接取得高階封裝的物件，可以用 `results.boxes.xyxy` 取得邊界框座標陣列、`results.boxes.conf` 取得信心度陣列、`results.boxes.cls` 取得類別索引陣列。iOS 端收到的是扁平化的浮點數陣列，需要根據索引計算規則（如 `floatArray[4 * 8400 + i]` 是第 i 個框的物體信心度）手動提取資料，或使用 Vision 框架取得已解析的 `VNRecognizedObjectObservation` 物件。 |
+| **最終輸出格式** | JSON dict <br> `{"ingredients": ["Beef", "Pork"], "confidence": [0.88, 0.75]}` | `[String]` 陣列 <br> `["Beef", "Pork"]` | Server 端透過 FastAPI 返回結構化的 JSON，包含檢測到的食材列表、各自的信心度、處理時間等資訊，方便前端解析和顯示。iOS 端通常只需要食材名稱列表，因此返回簡單的字串陣列，信心度和座標等資訊在內部處理後即丟棄（或另外儲存）。 |
+| **開發複雜度** | 極簡：1 行程式碼搞定推理 <br> `results = model('image.jpg')` | 中等：需理解 Vision 框架、CoreML、後處理邏輯 <br> 30-50+ 行程式碼 | Server 端只需要 `results = model('image.jpg')` 一行程式碼，`ultralytics` 框架會自動處理所有細節。iOS 端需要撰寫 30-50+ 行程式碼來處理圖像預處理（調整大小、格式轉換）、呼叫 CoreML 推理、解析輸出張量、執行 NMS、對應類別名稱等步驟，需要深入理解 Vision 框架的 API 和模型的輸出格式。 |
+| **除錯難度** | 容易（框架提供完整錯誤訊息） | 困難（需追蹤張量形狀、數值範圍） | Server 端如果出錯，`ultralytics` 會提供清楚的 Python 錯誤訊息，如「圖片格式不支援」、「模型檔案損壞」。iOS 端出錯時需要手動檢查每個步驟：張量的形狀是否正確（`[1, 3, 640, 640]` vs `[1, 640, 640, 3]`）、數值範圍是否正確（0-1 vs 0-255）、類別索引是否越界、NMS 參數是否合理等，除錯過程需要大量 print 和視覺化。 |
+| **依賴環境** | Python + `ultralytics` + PyTorch | Swift + Vision + CoreML | Server 端需要安裝 Python 3.8+、`ultralytics` 套件、PyTorch 函式庫，總安裝大小約 1-2GB。iOS 端使用 Apple 原生的 Swift 語言、Vision 框架（圖像處理）、CoreML 框架（機器學習推理），這些都是 iOS SDK 內建的，無需額外安裝第三方套件。 |
+| **網路需求** | 需要（上傳圖片到伺服器） | 無（本地推理） | Server 端的運作方式是：使用者在 App 中拍照 → 透過 HTTP POST 上傳圖片（通常 1-5MB）→ 伺服器處理 → 返回 JSON 結果。需要穩定的網路連線，上傳時間取決於網速。iOS 端所有運算都在裝置本地執行，圖片不需要離開手機，即使在飛機模式或無網路環境下也能正常運作。 |
+| **隱私性** | 低（圖片需上傳） | 高（圖片不離開裝置） | Server 端的使用者圖片會經過網路傳輸到伺服器，伺服器管理員理論上可以儲存、查看這些圖片，存在隱私洩漏風險（儘管可以加密傳輸）。iOS 端的圖片處理完全在裝置上進行，圖片資料不會離開手機，第三方（包括 App 開發者）無法存取，符合隱私保護的最高標準。 |
+| **營運成本** | 高（伺服器、頻寬） | 低（無伺服器費用） | Server 端需要租用雲端伺服器（如 AWS EC2、GCP Compute Engine），費用包括：虛擬機器租金（CPU/記憶體）、網路頻寬費用（每 GB 上傳/下載）、儲存空間費用。假設每月處理 10 萬次請求，總費用約 $50-200/月。iOS 端沒有伺服器成本，所有運算由使用者的裝置承擔，開發者只需負擔一次性的 App Store 開發者帳號費用（$99/年）。 |
+| **運算資源** | 可使用多核 CPU、大記憶體 | 受限於裝置硬體（手機/平板） | Server 端可以部署在高階伺服器上，如 32 核心 CPU、128GB RAM、GPU 加速，可以同時處理多個請求、運行更大的模型（如 YOLOv8x）。iOS 端受限於手機硬體，如 iPhone 14 只有 6 核心（2 性能 + 4 效能）、6GB RAM，只能運行輕量級模型（如 YOLOv8n），且推理速度較慢（100-300ms vs 30-50ms）。 |
+| **模型更新** | 簡單（替換 `.pt` 檔，重啟服務） | 複雜（需重新打包 App，通過審核） | Server 端更新模型只需：在伺服器上用新的 `.pt` 檔替換舊檔案，重啟 FastAPI 服務（或使用熱重載），立即生效，所有使用者自動使用新模型。iOS 端更新模型需要：重新轉換為 CoreML、更新 Xcode 專案、重新編譯 App、提交 App Store 審核（需 1-3 天）、等待使用者更新 App，整個流程需要 3-7 天。 |
+| **精度** | 最高（原始模型） | 略低於 Server（轉換損失 + 預處理差異） | Server 端使用原始的 PyTorch 模型，沒有任何轉換損失，理論精度最高。iOS 端在 `.pt` → `.onnx` → `.mlpackage` 轉換過程中，運算子實現差異、浮點數精度、預處理方式不同等因素會累積造成 5-10% 的精度下降。例如 Server 端 mAP50 是 0.85，iOS 端可能降到 0.78-0.80。 |
 
 **核心概念**:
 - **Server = 拆好的便當**（直接吃）：框架高度封裝，開箱即用
