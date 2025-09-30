@@ -1,0 +1,1 @@
+/Users/jc/Desktop/MSD/capstone/edge-ai-kitchen-assistant/backend/yolov8n_merged_food_cpu_aug_finetuned.mlpackage
