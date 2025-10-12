@@ -9,6 +9,8 @@ import os
 from PIL import Image
 from ultralytics import YOLO
 import torch
+import ollama
+import json
 
 app = FastAPI(
     title="Kitchen Assistant API",
@@ -221,22 +223,123 @@ async def _fallback_mock_detection(image: UploadFile, start_time: float):
         processing_time=processing_time
     )
 
+async def generate_recipe_with_llm(request: RecipeRequest) -> Recipe:
+    """
+    Generate recipe using Qwen2.5:3b LLM via Ollama.
+    """
+    # Create prompt for LLM
+    ingredients_str = ", ".join(request.ingredients)
+
+    prompt = f"""You are a professional chef. Create a detailed recipe based on these ingredients.
+
+Available Ingredients: {ingredients_str}
+Desired Meal: {request.mealCraving}
+Dietary Restrictions: {", ".join(request.dietaryRestrictions) if request.dietaryRestrictions else "None"}
+Preferred Cuisine: {request.preferredCuisine}
+
+Generate a recipe in JSON format with the following structure:
+{{
+  "title": "Recipe name",
+  "description": "Brief description (1-2 sentences)",
+  "prep_time": <number in minutes>,
+  "cook_time": <number in minutes>,
+  "servings": <number>,
+  "difficulty": "Easy|Medium|Hard",
+  "ingredients": [
+    {{"name": "ingredient name", "amount": "quantity", "unit": "unit", "notes": "optional notes"}}
+  ],
+  "instructions": [
+    {{"step": 1, "text": "instruction text", "time": <optional minutes>, "temperature": "optional temp", "tips": "optional tip"}}
+  ],
+  "tags": ["tag1", "tag2"],
+  "nutrition_info": {{
+    "calories": <number>,
+    "protein": "Xg",
+    "carbs": "Xg",
+    "fat": "Xg",
+    "fiber": "Xg",
+    "sugar": "Xg",
+    "sodium": "Xmg"
+  }}
+}}
+
+IMPORTANT:
+1. Only use the available ingredients provided
+2. Keep instructions clear and practical
+3. Return ONLY valid JSON, no additional text
+4. Make the recipe realistic and delicious"""
+
+    print(f"🤖 Generating recipe with Qwen2.5:3b for: {request.mealCraving}")
+
+    # Call Ollama API
+    response = ollama.chat(
+        model='qwen2.5:3b',
+        messages=[{
+            'role': 'user',
+            'content': prompt
+        }],
+        options={
+            'temperature': 0.7,  # Creative but not too random
+            'num_predict': 2048,  # Max tokens to generate
+        }
+    )
+
+    # Extract and parse JSON response
+    llm_output = response['message']['content']
+
+    # Try to extract JSON from the response (in case there's extra text)
+    try:
+        # Find JSON object in response
+        start_idx = llm_output.find('{')
+        end_idx = llm_output.rfind('}') + 1
+        if start_idx != -1 and end_idx > start_idx:
+            json_str = llm_output[start_idx:end_idx]
+            recipe_data = json.loads(json_str)
+        else:
+            raise ValueError("No JSON found in LLM response")
+    except Exception as e:
+        print(f"⚠️ Failed to parse LLM JSON: {e}")
+        print(f"Raw LLM output: {llm_output[:500]}...")
+        raise ValueError(f"LLM did not return valid JSON: {e}")
+
+    # Convert to Pydantic models
+    try:
+        recipe = Recipe(
+            title=recipe_data.get('title', 'Generated Recipe'),
+            description=recipe_data.get('description', ''),
+            prep_time=recipe_data.get('prep_time', 15),
+            cook_time=recipe_data.get('cook_time', 30),
+            servings=recipe_data.get('servings', 4),
+            difficulty=recipe_data.get('difficulty', 'Medium'),
+            ingredients=[Ingredient(**ing) for ing in recipe_data.get('ingredients', [])],
+            instructions=[Instruction(**inst) for inst in recipe_data.get('instructions', [])],
+            tags=recipe_data.get('tags', []),
+            nutrition_info=NutritionInfo(**recipe_data.get('nutrition_info', {})) if recipe_data.get('nutrition_info') else None
+        )
+
+        print(f"✅ Successfully generated recipe: {recipe.title}")
+        return recipe
+
+    except Exception as e:
+        print(f"⚠️ Failed to convert to Recipe model: {e}")
+        raise ValueError(f"Invalid recipe structure: {e}")
+
 @app.post("/api/recipes", response_model=Recipe)
 async def generate_recipe(request: RecipeRequest):
     """
-    Generate recipe based on ingredients and user preferences.
-    For week 1 demo: returns mock recipe to demonstrate API structure.
+    Generate recipe based on ingredients and user preferences using Qwen2.5:3b LLM.
     """
     try:
-        # Simulate recipe generation time
-        await asyncio.sleep(2.0)
-        
-        # Generate mock recipe
+        # Generate recipe using Qwen2.5
+        recipe = await generate_recipe_with_llm(request)
+        return recipe
+
+    except Exception as e:
+        print(f"❌ LLM recipe generation failed: {e}")
+        # Fallback to mock recipe on error
+        print("🔄 Using fallback mock recipe")
         recipe = generate_mock_recipe(request)
         return recipe
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Recipe generation failed: {str(e)}")
 
 def generate_mock_recipe(request: RecipeRequest) -> Recipe:
     """Generate a mock recipe based on the request parameters."""

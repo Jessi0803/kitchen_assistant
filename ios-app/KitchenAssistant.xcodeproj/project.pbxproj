@@ -7,27 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A41234561234567890ABCDEF /* KitchenAssistantApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41234551234567890ABCDEF /* KitchenAssistantApp.swift */; };
-		A41234581234567890ABCDEF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41234571234567890ABCDEF /* ContentView.swift */; };
-		A4123459123456789ABCDEF0 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4123458123456789ABCDEF0 /* CameraView.swift */; };
-		A412345A123456789ABCDEF0 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4123459123456789ABCDEF1 /* APIClient.swift */; };
-		A412345B123456789ABCDEF0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A412345A123456789ABCDEF1 /* Assets.xcassets */; };
-		CDBEC7DC645B43E0A2005490 /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3404B322D5DF489BA72BA864 /* Recipe.swift */; };
-		C3F1A9C3638D4CDE8699259E /* RecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19488ECCA5DA45C98E4033EE /* RecipeView.swift */; };
-		A1FD6854C12342A3BE220555 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E60D8F206C748DCAE6D6F54 /* ImagePicker.swift */; };
+		499607792E99BFFC0009EBD3 /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499607762E99BFFC0009EBD3 /* Recipe.swift */; };
+		4996077A2E99BFFC0009EBD3 /* yolov8n_merged_food_cpu_aug_finetuned.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 499607772E99BFFC0009EBD3 /* yolov8n_merged_food_cpu_aug_finetuned.mlpackage */; };
+		499607822E99C01A0009EBD3 /* LocalInferenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4996077C2E99C01A0009EBD3 /* LocalInferenceService.swift */; };
+		499607832E99C01A0009EBD3 /* RecipeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499607802E99C01A0009EBD3 /* RecipeDetailView.swift */; };
+		499607842E99C01A0009EBD3 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4996077B2E99C01A0009EBD3 /* APIClient.swift */; };
+		499607852E99C01A0009EBD3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4996077F2E99C01A0009EBD3 /* ContentView.swift */; };
+		499607862E99C01A0009EBD3 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4996077E2E99C01A0009EBD3 /* CameraView.swift */; };
+		4996078A2E99C10B0009EBD3 /* KitchenAssistantApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499607872E99C10B0009EBD3 /* KitchenAssistantApp.swift */; };
+		4996078B2E99C10B0009EBD3 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499607882E99C10B0009EBD3 /* ImagePicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A41234521234567890ABCDEF /* KitchenAssistant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KitchenAssistant.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A41234551234567890ABCDEF /* KitchenAssistantApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenAssistant/KitchenAssistantApp.swift; sourceTree = "<group>"; };
-		A41234571234567890ABCDEF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenAssistant/Views/ContentView.swift; sourceTree = "<group>"; };
-		A4123458123456789ABCDEF0 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenAssistant/Views/CameraView.swift; sourceTree = "<group>"; };
-		A4123459123456789ABCDEF1 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenAssistant/Services/APIClient.swift; sourceTree = "<group>"; };
-		A412345A123456789ABCDEF1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = KitchenAssistant/Assets.xcassets; sourceTree = "<group>"; };
-		A412345C123456789ABCDEF1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = KitchenAssistant/Info.plist; sourceTree = "<group>"; };
-		3404B322D5DF489BA72BA864 /* Recipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenAssistant/Models/Recipe.swift; sourceTree = "<group>"; };
-		19488ECCA5DA45C98E4033EE /* RecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenAssistant/Views/RecipeView.swift; sourceTree = "<group>"; };
-		1E60D8F206C748DCAE6D6F54 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenAssistant/Utils/ImagePicker.swift; sourceTree = "<group>"; };
+		1374EA596E5E19EE272A8635 /* Pods_KitchenAssistant.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_KitchenAssistant.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		499607762E99BFFC0009EBD3 /* Recipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recipe.swift; sourceTree = "<group>"; };
+		499607772E99BFFC0009EBD3 /* yolov8n_merged_food_cpu_aug_finetuned.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = yolov8n_merged_food_cpu_aug_finetuned.mlpackage; sourceTree = "<group>"; };
+		4996077B2E99C01A0009EBD3 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		4996077C2E99C01A0009EBD3 /* LocalInferenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalInferenceService.swift; sourceTree = "<group>"; };
+		4996077E2E99C01A0009EBD3 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
+		4996077F2E99C01A0009EBD3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		499607802E99C01A0009EBD3 /* RecipeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeDetailView.swift; sourceTree = "<group>"; };
+		499607872E99C10B0009EBD3 /* KitchenAssistantApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KitchenAssistantApp.swift; path = KitchenAssistant/KitchenAssistantApp.swift; sourceTree = SOURCE_ROOT; };
+		499607882E99C10B0009EBD3 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
+		499639C12E85FB360009EBD3 /* KitchenAssistant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KitchenAssistant.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,52 +43,74 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A41234541234567890ABCDEF /* KitchenAssistant */ = {
+		3437D5AE544C96CCF223E6AE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				A41234551234567890ABCDEF /* KitchenAssistantApp.swift */,
-				120713598A5A494A99136B8B /* Models */,
-				A4123460123456789ABCDEF /* Views */,
-				A4123461123456789ABCDEF /* Services */,
-				355870AB9C1A480AA64492FD /* Utils */,
-				A412345A123456789ABCDEF1 /* Assets.xcassets */,
-				A412345C123456789ABCDEF1 /* Info.plist */,
+				1374EA596E5E19EE272A8635 /* Pods_KitchenAssistant.framework */,
 			);
-			path = KitchenAssistant;
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		120713598A5A494A99136B8B /* Models */ = {
+		499607782E99BFFC0009EBD3 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				3404B322D5DF489BA72BA864 /* Recipe.swift */,
+				499607762E99BFFC0009EBD3 /* Recipe.swift */,
+				499607772E99BFFC0009EBD3 /* yolov8n_merged_food_cpu_aug_finetuned.mlpackage */,
 			);
-			path = Models;
-			sourceTree = "<group>";
+			name = Models;
+			path = KitchenAssistant/Models;
+			sourceTree = SOURCE_ROOT;
 		};
-		A4123460123456789ABCDEF /* Views */ = {
+		4996077D2E99C01A0009EBD3 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				A41234571234567890ABCDEF /* ContentView.swift */,
-				A4123458123456789ABCDEF0 /* CameraView.swift */,
-				19488ECCA5DA45C98E4033EE /* RecipeView.swift */,
+				4996077B2E99C01A0009EBD3 /* APIClient.swift */,
+				4996077C2E99C01A0009EBD3 /* LocalInferenceService.swift */,
 			);
-			path = Views;
-			sourceTree = "<group>";
+			name = Services;
+			path = KitchenAssistant/Services;
+			sourceTree = SOURCE_ROOT;
 		};
-		A4123461123456789ABCDEF /* Services */ = {
+		499607812E99C01A0009EBD3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				A4123459123456789ABCDEF1 /* APIClient.swift */,
+				4996077E2E99C01A0009EBD3 /* CameraView.swift */,
+				4996077F2E99C01A0009EBD3 /* ContentView.swift */,
+				499607802E99C01A0009EBD3 /* RecipeDetailView.swift */,
 			);
-			path = Services;
-			sourceTree = "<group>";
+			name = Views;
+			path = KitchenAssistant/Views;
+			sourceTree = SOURCE_ROOT;
 		};
-		355870AB9C1A480AA64492FD /* Utils */ = {
+		499607892E99C10B0009EBD3 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
-				1E60D8F206C748DCAE6D6F54 /* ImagePicker.swift */,
+				499607882E99C10B0009EBD3 /* ImagePicker.swift */,
 			);
-			path = Utils;
+			name = Utils;
+			path = KitchenAssistant/Utils;
+			sourceTree = SOURCE_ROOT;
+		};
+		499639BF2E85FB360009EBD3 /* /Users/jc/Desktop/MSD/capstone/edge-ai-kitchen-assistant/ios-app/KitchenAssistant.xcodeproj */ = {
+			isa = PBXGroup;
+			children = (
+				499607872E99C10B0009EBD3 /* KitchenAssistantApp.swift */,
+				499607892E99C10B0009EBD3 /* Utils */,
+				4996077D2E99C01A0009EBD3 /* Services */,
+				499607812E99C01A0009EBD3 /* Views */,
+				499607782E99BFFC0009EBD3 /* Models */,
+				499639C22E85FB360009EBD3 /* Products */,
+				3437D5AE544C96CCF223E6AE /* Frameworks */,
+			);
+			path = "/Users/jc/Desktop/MSD/capstone/edge-ai-kitchen-assistant/ios-app/KitchenAssistant.xcodeproj";
+			sourceTree = "<absolute>";
+		};
+		499639C22E85FB360009EBD3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				499639C12E85FB360009EBD3 /* KitchenAssistant.app */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -106,7 +130,7 @@
 			);
 			name = KitchenAssistant;
 			productName = KitchenAssistant;
-			productReference = A41234521234567890ABCDEF /* KitchenAssistant.app */;
+			productReference = 499639C12E85FB360009EBD3 /* KitchenAssistant.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -132,8 +156,11 @@
 				en,
 				Base,
 			);
-			mainGroup = A41234491234567890ABCDEF;
-			productRefGroup = A41234531234567890ABCDEF /* Products */;
+			mainGroup = 499639BF2E85FB360009EBD3 /* /Users/jc/Desktop/MSD/capstone/edge-ai-kitchen-assistant/ios-app/KitchenAssistant.xcodeproj */;
+			packageReferences = (
+				499639C32E8603260009EBD3 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+			);
+			productRefGroup = 499639C22E85FB360009EBD3 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -147,7 +174,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A412345B123456789ABCDEF0 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -158,13 +184,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A41234581234567890ABCDEF /* ContentView.swift in Sources */,
-				A4123459123456789ABCDEF0 /* CameraView.swift in Sources */,
-				A412345A123456789ABCDEF0 /* APIClient.swift in Sources */,
-				A41234561234567890ABCDEF /* KitchenAssistantApp.swift in Sources */,
-				CDBEC7DC645B43E0A2005490 /* Recipe.swift in Sources */,
-				C3F1A9C3638D4CDE8699259E /* RecipeView.swift in Sources */,
-				A1FD6854C12342A3BE220555 /* ImagePicker.swift in Sources */,
+				499607792E99BFFC0009EBD3 /* Recipe.swift in Sources */,
+				4996077A2E99BFFC0009EBD3 /* yolov8n_merged_food_cpu_aug_finetuned.mlpackage in Sources */,
+				4996078A2E99C10B0009EBD3 /* KitchenAssistantApp.swift in Sources */,
+				4996078B2E99C10B0009EBD3 /* ImagePicker.swift in Sources */,
+				499607822E99C01A0009EBD3 /* LocalInferenceService.swift in Sources */,
+				499607832E99C01A0009EBD3 /* RecipeDetailView.swift in Sources */,
+				499607842E99C01A0009EBD3 /* APIClient.swift in Sources */,
+				499607852E99C01A0009EBD3 /* ContentView.swift in Sources */,
+				499607862E99C01A0009EBD3 /* CameraView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,6 +341,21 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/cv2/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/coremltools",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/PIL/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/torch/lib",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/numpy/_core/lib",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/torchvision/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/scipy/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/google/_upb",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/numpy/random/lib",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/onnxruntime/capi",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/polars",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/scipy/special",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kitchenassistant.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -345,6 +388,21 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/cv2/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/coremltools",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/PIL/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/torch/lib",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/numpy/_core/lib",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/torchvision/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/scipy/.dylibs",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/google/_upb",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/numpy/random/lib",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/onnxruntime/capi",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/polars",
+					"$(PROJECT_DIR)/KitchenAssistant.xcodeproj/Models/yolo_venv_310/lib/python3.10/site-packages/scipy/special",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kitchenassistant.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -376,6 +434,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		499639C32E8603260009EBD3 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.20.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = A412344A1234567890ABCDEF /* Project object */;
 }

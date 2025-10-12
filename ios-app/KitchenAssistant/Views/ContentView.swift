@@ -28,7 +28,7 @@ struct ContentView: View {
             }
             .tag(1)
             
-            RecipeView(recipe: generatedRecipe)
+            RecipeTab(recipe: generatedRecipe)
                 .tabItem {
                     Image(systemName: "book.fill")
                     Text("Recipe")
@@ -94,7 +94,7 @@ struct HomeView: View {
 }
 
 struct SettingsView: View {
-    @State private var useLocalProcessing = true
+    @AppStorage("useLocalProcessing") private var useLocalProcessing = true
     @State private var dietaryRestrictions = ""
     @State private var preferredCuisine = "Any"
     
@@ -144,12 +144,134 @@ struct SettingsView: View {
     }
 }
 
+struct RecipeTab: View {
+    let recipe: Recipe?
+    @State private var showRecipeDetail = false
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if let recipe = recipe {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.green)
+
+                            Text("Your Recipe is Ready!")
+                                .font(.title2)
+                                .fontWeight(.bold)
+
+                            RecipePreviewCard(recipe: recipe) {
+                                showRecipeDetail = true
+                            }
+                            .padding(.horizontal)
+                        }
+                        .padding(.vertical)
+                    }
+                } else {
+                    VStack(spacing: 20) {
+                        Image(systemName: "book.closed")
+                            .font(.system(size: 80))
+                            .foregroundColor(.secondary)
+
+                        Text("No Recipe Yet")
+                            .font(.title2)
+                            .fontWeight(.bold)
+
+                        Text("Generate a recipe by scanning your fridge in the 'Scan Fridge' tab")
+                            .font(.body)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+
+                        Spacer()
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Recipe")
+        }
+        .sheet(isPresented: $showRecipeDetail) {
+            if let recipe = recipe {
+                RecipeDetailView(recipe: recipe)
+            }
+        }
+    }
+}
+
+struct RecipePreviewCard: View {
+    let recipe: Recipe
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text(recipe.title)
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text(recipe.description)
+                .font(.body)
+                .foregroundColor(.secondary)
+
+            HStack(spacing: 20) {
+                Label("\(recipe.prepTime + recipe.cookTime) min", systemImage: "clock.fill")
+                    .font(.subheadline)
+
+                Label("\(recipe.servings) servings", systemImage: "person.2.fill")
+                    .font(.subheadline)
+
+                Spacer()
+            }
+            .foregroundColor(.green)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Ingredients (\(recipe.ingredients.count))")
+                    .font(.headline)
+
+                ForEach(recipe.ingredients.prefix(3)) { ingredient in
+                    HStack {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 6))
+                            .foregroundColor(.green)
+
+                        Text(ingredient.displayText)
+                            .font(.subheadline)
+                    }
+                }
+
+                if recipe.ingredients.count > 3 {
+                    Text("+ \(recipe.ingredients.count - 3) more...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Button(action: action) {
+                Text("View Full Recipe")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(16)
+        .shadow(radius: 5)
+    }
+}
+
 extension View {
     func placeholder<Content: View>(
         when shouldShow: Bool,
         alignment: Alignment = .leading,
         @ViewBuilder placeholder: () -> Content) -> some View {
-            
+
         ZStack(alignment: alignment) {
             placeholder().opacity(shouldShow ? 1 : 0)
             self

@@ -13,7 +13,11 @@ struct CameraView: View {
     @State private var inputSource: InputSource = .camera
     @State private var mealCraving = ""
     @State private var apiClient = APIClient()
-    
+    @State private var localInferenceService = LocalInferenceService()
+    @AppStorage("useLocalProcessing") private var useLocalProcessing = true
+    @State private var errorMessage: String?
+    @State private var showRecipeDetail = false
+
     enum InputSource {
         case camera
         case photoLibrary
@@ -32,6 +36,7 @@ struct CameraView: View {
                                 capturedImage = nil
                                 detectedIngredients = []
                                 generatedRecipe = nil
+                                errorMessage = nil
                             }
                         )
                     } else {
@@ -47,12 +52,12 @@ struct CameraView: View {
                         
                         if detectedIngredients.isEmpty && !isLoading {
                             ProcessImageButton(
-                                action: processImage,
+                                action: { Task { await processImage() } },
                                 isEnabled: true
                             )
                         } else if !detectedIngredients.isEmpty {
                             GenerateRecipeButton(
-                                action: generateRecipe,
+                                action: { Task { await generateRecipe() } },
                                 isEnabled: !mealCraving.isEmpty,
                                 isLoading: isLoading
                             )
@@ -62,10 +67,28 @@ struct CameraView: View {
                     if isLoading {
                         LoadingView()
                     }
+                    
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .padding()
+                    }
+
+                    // Display generated recipe
+                    if let recipe = generatedRecipe {
+                        RecipeCard(recipe: recipe) {
+                            showRecipeDetail = true
+                        }
+                    }
                 }
                 .padding()
             }
             .navigationTitle("Scan Fridge")
+        }
+        .sheet(isPresented: $showRecipeDetail) {
+            if let recipe = generatedRecipe {
+                RecipeDetailView(recipe: recipe)
+            }
         }
         .sheet(isPresented: $showCamera) {
             ImagePickerView(
@@ -84,18 +107,32 @@ struct CameraView: View {
     private func processImage() {
         guard let image = capturedImage else { return }
         
+        errorMessage = nil
         isLoading = true
-        
+
         Task {
             do {
-                let ingredients = try await apiClient.detectIngredients(in: image)
+                let ingredients: [String]
+
+                if useLocalProcessing {
+                    // Use local inference
+                    print("🔧 Using local processing")
+                    ingredients = try await localInferenceService.detect(image: image)
+                } else {
+                    // Use server-side API
+                    print("🌐 Using server processing")
+                    ingredients = try await apiClient.detectIngredients(in: image)
+                }
+
                 await MainActor.run {
                     self.detectedIngredients = ingredients
                     self.isLoading = false
                 }
             } catch {
+                let errorDescription = error.localizedDescription
                 await MainActor.run {
                     self.isLoading = false
+                    self.errorMessage = "Detection Failed: \(errorDescription)"
                 }
                 print("Error detecting ingredients: \(error)")
             }
@@ -221,7 +258,7 @@ struct IngredientsList: View {
                 GridItem(.flexible()),
                 GridItem(.flexible())
             ], spacing: 8) {
-                ForEach(ingredients, id: \.self) { ingredient in
+                ForEach(Array(ingredients.enumerated()), id: \.offset) { index, ingredient in
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
@@ -257,11 +294,11 @@ struct MealCravingInput: View {
 }
 
 struct ProcessImageButton: View {
-    let action: () -> Void
+    let action: () async -> Void
     let isEnabled: Bool
     
     var body: some View {
-        Button(action: action) {
+        Button(action: { Task { await action() } }) {
             Text("Process Image")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
@@ -275,12 +312,12 @@ struct ProcessImageButton: View {
 }
 
 struct GenerateRecipeButton: View {
-    let action: () -> Void
+    let action: () async -> Void
     let isEnabled: Bool
     let isLoading: Bool
     
     var body: some View {
-        Button(action: action) {
+        Button(action: { Task { await action() } }) {
             HStack {
                 if isLoading {
                     ProgressView()
@@ -306,12 +343,89 @@ struct LoadingView: View {
             ProgressView()
                 .progressViewStyle(CircularProgressViewStyle())
                 .scaleEffect(1.5)
-            
+
             Text("Processing...")
                 .font(.body)
                 .foregroundColor(.secondary)
         }
         .padding()
+    }
+}
+
+struct RecipeCard: View {
+    let recipe: Recipe
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.title2)
+
+                Text("Recipe Generated!")
+                    .font(.headline)
+                    .foregroundColor(.green)
+
+                Spacer()
+            }
+
+            Text(recipe.title)
+                .font(.title2)
+                .fontWeight(.bold)
+
+            Text(recipe.description)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+
+            HStack(spacing: 15) {
+                Label("\(recipe.prepTime + recipe.cookTime) min", systemImage: "clock")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Label("\(recipe.servings) servings", systemImage: "person.2")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Text(recipe.difficulty.rawValue)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(difficultyColor.opacity(0.2))
+                    .foregroundColor(difficultyColor)
+                    .cornerRadius(6)
+            }
+
+            Button(action: action) {
+                HStack {
+                    Text("View Full Recipe")
+                        .font(.headline)
+
+                    Spacer()
+
+                    Image(systemName: "arrow.right")
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.green)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+        }
+        .padding()
+        .background(Color.green.opacity(0.1))
+        .cornerRadius(12)
+        .shadow(radius: 3)
+    }
+
+    var difficultyColor: Color {
+        switch recipe.difficulty {
+        case .easy: return .green
+        case .medium: return .orange
+        case .hard: return .red
+        }
     }
 }
 
