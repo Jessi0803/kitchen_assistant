@@ -41,6 +41,357 @@ iOS App → FastAPI Backend → YOLO (Ingredient Detection) → Qwen2.5:3b (Reci
 
 ---
 
+## Technology Stack & Hardware Configuration
+
+### Development Environment
+
+#### Hardware
+- **Device**: MacBook Air (2024)
+- **Chip**: Apple M3 (8-core CPU + 10-core GPU)
+- **RAM**: 16 GB unified memory
+- **OS**: macOS 14.6.1 (Sonoma)
+- **Architecture**: ARM64 (Apple Silicon)
+
+#### Software Versions
+- **Python**: 3.13.5
+- **Xcode**: 16.2 (Build 16C5032a)
+- **iOS Deployment Target**: 17.0+
+- **Ollama**: 0.12.3
+
+---
+
+### Backend Stack (Python/FastAPI)
+
+#### Core Frameworks & Libraries
+
+##### Web Framework & API
+```python
+fastapi==0.104.1                    # Modern async web framework
+uvicorn[standard]==0.24.0           # ASGI server
+python-multipart==0.0.6             # File upload support
+pydantic==2.5.0                     # Data validation
+aiofiles==23.2.1                    # Async file operations
+```
+
+##### Computer Vision & Deep Learning (YOLOv8n Fine-tuning)
+```python
+# Core ML Libraries
+torch==2.8.0                        # PyTorch deep learning framework
+torchvision==0.23.0                 # Computer vision utilities
+ultralytics==8.3.203                # YOLOv8 implementation
+opencv-python==4.12.0.88            # Image processing
+
+# Scientific Computing
+numpy==2.2.6                        # Numerical computing
+scipy==1.15.3                       # Scientific algorithms
+matplotlib==3.10.6                  # Visualization
+
+# Data Processing
+polars==1.33.1                      # Fast DataFrame library
+PyYAML==6.0.3                       # YAML parser for configs
+```
+
+**Why these versions?**
+- `torch==2.8.0` + `ultralytics==8.3.203`: Latest stable combination for Python 3.13
+- `opencv-python==4.12.0.88`: Full OpenCV support including contrib modules
+- CPU-only training for stability (MPS training had compatibility issues on Python 3.13)
+
+##### Model Deployment & Inference
+```python
+onnxruntime==1.23.0                 # ONNX model runtime
+Pillow==11.3.0                      # Image loading/manipulation
+```
+
+##### LLM Integration (Recipe Generation)
+```bash
+# Ollama (installed via Homebrew)
+ollama version 0.12.3
+
+# Python SDK
+ollama                              # Python client for Ollama API
+```
+
+**Model**: Qwen2.5:3b (1.9 GB)
+- 3 billion parameters
+- 32 transformer layers
+- Hidden size: 2048
+- Attention heads: 16
+- Inference speed: 40-60 tokens/s (on M3 GPU via Metal)
+
+##### Utilities
+```python
+requests==2.32.5                    # HTTP client
+certifi==2025.8.3                   # SSL certificates
+psutil==7.1.0                       # System monitoring
+```
+
+---
+
+### Frontend Stack (iOS/SwiftUI)
+
+#### Core Technologies
+- **Language**: Swift 5.x
+- **UI Framework**: SwiftUI (iOS 17.0+)
+- **Architecture**: MVVM (Model-View-ViewModel)
+- **Async/Await**: Swift Concurrency
+- **Navigation**: SwiftUI Navigation
+
+#### Key iOS Frameworks
+```swift
+import SwiftUI              // Declarative UI framework
+import UIKit                // UIImage, UIImagePickerController
+import Foundation           // Core utilities (URLSession, Codable)
+import PhotosUI             // Photo library access
+import Combine              // Reactive programming
+```
+
+#### Data Layer
+- **Networking**:
+  - `URLSession` for HTTP requests
+  - `async/await` for asynchronous operations
+  - `Codable` for JSON encoding/decoding
+
+- **State Management**:
+  - `@State` for local view state
+  - `@Binding` for two-way data binding
+  - `@ObservableObject` for shared state
+  - `@AppStorage` for user preferences
+
+#### No External Dependencies
+- **Zero third-party pods/packages**
+- All functionality built with native iOS frameworks
+- Lightweight and maintainable
+
+---
+
+### Fine-tuning Stack (YOLOv8n Training)
+
+#### Training Environment
+```python
+Device: CPU (Apple M3 - 8 cores)
+PyTorch: 2.8.0
+Ultralytics: 8.3.203
+Workers: 2 (for data loading)
+```
+
+#### Training Configuration
+```python
+Optimizer: AdamW
+├─ Learning rate: 0.0005
+├─ Weight decay: 0.0005
+├─ Warmup epochs: 2
+└─ Batch size: 8
+
+Augmentations (moderate):
+├─ HSV (hue, saturation, value): (0.01, 0.3, 0.2)
+├─ Horizontal flip: 0.5
+├─ Mosaic: 0.3
+├─ Scale: 0.2
+└─ Translate: 0.05
+
+Training Duration:
+├─ Epochs: 30
+├─ Image size: 640x640
+└─ Total time: ~2-3 hours on M3 CPU
+```
+
+#### Why CPU Training?
+- **Stability**: No MPS-related dimension errors
+- **Reproducibility**: Consistent results across runs
+- **Compatibility**: Works perfectly with Python 3.13
+- **Performance**: Still achieves mAP50 ≈ 0.881 (excellent)
+
+**Note**: Attempted MPS (Apple Silicon GPU) training on Python 3.13 with PyTorch ≥2.6, but encountered:
+- Negative-dimension errors during training
+- Version constraint conflicts
+- `torch.load` security changes requiring special handling
+
+---
+
+### Dataset
+
+#### Food Classes (11 total)
+```
+Proteins: beef, pork, chicken
+Dairy: butter, cheese, milk
+Vegetables: broccoli, carrot, cucumber, lettuce, tomato
+```
+
+#### Dataset Structure
+```
+datasets/merged_food_dataset/
+├── images/
+│   ├── train/           # Training images
+│   └── val/             # Validation images
+├── labels/
+│   ├── train/           # YOLO format annotations
+│   └── val/
+└── data.yaml            # Dataset configuration
+```
+
+---
+
+### API Communication
+
+#### Data Flow Architecture
+```
+iOS (Swift/SwiftUI)
+    ↕ HTTP/REST API (JSON)
+Backend (Python/FastAPI)
+    ↕ Python objects (Pydantic)
+YOLO Model (PyTorch)
+    ↕ Tensors
+Ollama (Qwen2.5:3b)
+    ↕ Text/JSON
+```
+
+#### Content Types
+- **Image Upload**: `multipart/form-data` (JPEG, quality 0.8)
+- **API Requests/Responses**: `application/json`
+- **Data Formats**:
+  - iOS: `camelCase` (Swift naming convention)
+  - Backend: `snake_case` (Python naming convention)
+  - Automatic conversion via `JSONDecoder.keyDecodingStrategy`
+
+---
+
+### Development Tools
+
+#### Version Control
+```bash
+Git 2.x
+GitHub repository: github.com/Jessi0803/kitchen_assistant
+```
+
+#### Python Environment
+```bash
+# Virtual environment management
+python3 -m venv fresh_venv
+source fresh_venv/bin/activate
+
+# Package management
+pip install -r requirements.txt
+```
+
+#### iOS Development
+```bash
+# Xcode command line tools
+xcode-select --install
+
+# iOS Simulator testing
+iPhone 15 Pro simulator (iOS 17.0+)
+```
+
+---
+
+### Performance Benchmarks
+
+#### Inference Performance (M3 MacBook Air, 16GB RAM)
+
+| Component | Operation | Time | Hardware Utilization |
+|-----------|-----------|------|---------------------|
+| **YOLO Detection** | Image → Ingredients | 0.5-1.0 sec | CPU (8 cores) |
+| **LLM Generation** | Prompt → Recipe JSON | 15-30 sec | GPU (Metal) @ 40-60 tokens/s |
+| **Network Latency** | HTTP (localhost) | 0.05-0.1 sec | N/A |
+| **JSON Processing** | Parse/Encode | <0.1 sec | CPU |
+| **UI Rendering** | SwiftUI Updates | <0.1 sec | GPU (SwiftUI) |
+| **Total E2E** | Photo → Full Recipe | **16-32 sec** | Mixed CPU/GPU |
+
+#### Resource Usage
+- **Memory (Backend)**: ~1.5 GB (with Qwen2.5:3b loaded)
+- **Memory (iOS App)**: ~100-200 MB
+- **Model Sizes**:
+  - YOLOv8n fine-tuned: ~6 MB
+  - Qwen2.5:3b: 1.9 GB
+
+---
+
+## Finetuning YOLOv8n (CPU)
+
+I fine-tune `yolov8n.pt` on my food dataset using a CPU.
+
+### How to run
+```bash
+cd backend
+source fresh_venv/bin/activate
+python3 fine_tune_yolo_cpu_aug.py
+```
+
+### Training process
+- device: CPU (stable on this machine)
+- epochs: 30, batch: 8, imgsz: 640, workers: 2
+- optimizer: AdamW (lr0=0.0005, weight_decay=0.0005, warmup_epochs=2)
+- augmentations: moderate (hsv_h=0.01, hsv_s=0.3, hsv_v=0.2, fliplr=0.5, mosaic=0.3, mixup=0.0)
+- val/plots: enabled; metrics and plots are saved every run
+- outputs: `kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/`
+
+#### Data augmentation (on-the-fly)
+- Augmentations are applied per batch/epoch in memory; original files are not changed.
+- Each batch re-samples transforms (flip, color jitter, scale, translate, mosaic/mixup, etc.). Images are not "flipped back"—the change is one-time for that batch.
+- Labels (bounding boxes) are transformed consistently with the image.
+- Validation and inference avoid strong augmentations (typically only resize/letterbox).
+
+### Training Results
+- Overall metrics and losses over epochs:
+![YOLO Training Results](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/results.png)
+
+- Class-wise performance (normalized confusion matrix):
+![Confusion Matrix (Normalized)](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/confusion_matrix_normalized.png)
+
+Short summary:
+- Final (epoch 30) precision ≈ 0.865, recall ≈ 0.857
+- Final mAP50 ≈ 0.881, mAP50-95 ≈ 0.685
+- Train/val losses steadily decreased and plateaued near the end, indicating stable convergence
+
+### Losses (what they mean)
+- box_loss: bounding box regression loss. Measures how well predicted boxes overlap with ground truth (IoU-based). Lower is better localization.
+- cls_loss: classification loss. Measures how well the model predicts the correct class probabilities (BCE/Logits). Lower is better classification.
+- dfl_loss: Distribution Focal Loss. Models box coordinates as discrete distributions for finer localization. Lower is sharper, more precise box edges.
+
+Tips: Typically all three decrease together. As box_loss and dfl_loss drop, mAP50-95 improves; as cls_loss improves, precision/recall increase.
+
+---
+
+## Dataset
+I use `datasets/merged_food_dataset` with 11 classes:
+`beef, pork, chicken, butter, cheese, milk, broccoli, carrot, cucumber, lettuce, tomato`.
+
+---
+
+## Why not MPS (Apple Silicon GPU)
+I attempted MPS training on Python 3.13 with PyTorch ≥2.6 and Ultralytics 8.x, but ran into recurring issues:
+- Negative-dimension/validation errors on MPS during training/metrics
+- Version constraints on Python 3.13 limit known good torch+ultralytics combos
+- `torch.load` security change (`weights_only=True`) required special handling
+
+CPU training is stable and produced strong results (e.g., good mAP50). If I must use MPS, a more compatible stack is Python 3.11 + torch 2.1.0 + ultralytics 8.0.120 with conservative settings (amp=False, small batch/imgsz, minimal augments) and validating on CPU — but this requires a separate environment.
+
+---
+
+## Data Types Flow
+
+**User Upload**: UIImage → Data (JPEG/PNG)
+*Example: User selects photo from camera roll → 2.3MB JPEG data*
+
+**Backend**: UploadFile → bytes → PIL.Image
+*Example: FastAPI receives multipart file → 2,300,000 bytes → PIL Image object (640×480 RGB)*
+
+**YOLO Input**: PIL.Image
+*Example: PIL Image (640×480×3) ready for model inference*
+
+**YOLO Output**: List[Results] with boxes, confidence, classes
+*Example: 2 detections with boxes=[(90,40,210,160), (300,200,420,320)], conf=[0.91, 0.84], cls=["tomato", "cheese"]*
+
+**Processing**: Map model class names → human-friendly names, keep confidences
+*Example: {ingredients: ["Tomato", "Cheese"], confidence: [0.91, 0.84]}*
+
+**Response**: DetectionResponse (ingredients, confidence, time)
+*Example: {"ingredients": ["Tomato", "Cheese"], "confidence": [0.91, 0.84], "processing_time": 1.2}*
+
+**iOS**: [String] food names, [Double] confidence scores
+*Example: ["Tomato", "Cheese"] and [0.91, 0.84] displayed in UI*
+
+
 # Recipe Generation with Qwen2.5:3b LLM
 
 ## Overview
@@ -519,96 +870,6 @@ Display Content:
 | UI Rendering | <0.1 sec | SwiftUI |
 | **Total (User Experience)** | **16-32 sec** | From click to recipe display |
 
----
-
-
-
-## Finetuning YOLOv8n (CPU)
-
-I fine-tune `yolov8n.pt` on my food dataset using a CPU.
-
-### How to run
-```bash
-cd backend
-source fresh_venv/bin/activate
-python3 fine_tune_yolo_cpu_aug.py
-```
-
-### Training process
-- device: CPU (stable on this machine)
-- epochs: 30, batch: 8, imgsz: 640, workers: 2
-- optimizer: AdamW (lr0=0.0005, weight_decay=0.0005, warmup_epochs=2)
-- augmentations: moderate (hsv_h=0.01, hsv_s=0.3, hsv_v=0.2, fliplr=0.5, mosaic=0.3, mixup=0.0)
-- val/plots: enabled; metrics and plots are saved every run
-- outputs: `kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/`
-
-#### Data augmentation (on-the-fly)
-- Augmentations are applied per batch/epoch in memory; original files are not changed.
-- Each batch re-samples transforms (flip, color jitter, scale, translate, mosaic/mixup, etc.). Images are not "flipped back"—the change is one-time for that batch.
-- Labels (bounding boxes) are transformed consistently with the image.
-- Validation and inference avoid strong augmentations (typically only resize/letterbox).
-
-### Training Results
-- Overall metrics and losses over epochs:
-![YOLO Training Results](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/results.png)
-
-- Class-wise performance (normalized confusion matrix):
-![Confusion Matrix (Normalized)](backend/kitchen_assistant_training_cpu_aug/merged_food_yolov8n_cpu_aug_30epochs/confusion_matrix_normalized.png)
-
-Short summary:
-- Final (epoch 30) precision ≈ 0.865, recall ≈ 0.857
-- Final mAP50 ≈ 0.881, mAP50-95 ≈ 0.685
-- Train/val losses steadily decreased and plateaued near the end, indicating stable convergence
-
-### Losses (what they mean)
-- box_loss: bounding box regression loss. Measures how well predicted boxes overlap with ground truth (IoU-based). Lower is better localization.
-- cls_loss: classification loss. Measures how well the model predicts the correct class probabilities (BCE/Logits). Lower is better classification.
-- dfl_loss: Distribution Focal Loss. Models box coordinates as discrete distributions for finer localization. Lower is sharper, more precise box edges.
-
-Tips: Typically all three decrease together. As box_loss and dfl_loss drop, mAP50-95 improves; as cls_loss improves, precision/recall increase.
-
----
-
-## Dataset
-I use `datasets/merged_food_dataset` with 11 classes:
-`beef, pork, chicken, butter, cheese, milk, broccoli, carrot, cucumber, lettuce, tomato`.
-
----
-
-## Why not MPS (Apple Silicon GPU)
-I attempted MPS training on Python 3.13 with PyTorch ≥2.6 and Ultralytics 8.x, but ran into recurring issues:
-- Negative-dimension/validation errors on MPS during training/metrics
-- Version constraints on Python 3.13 limit known good torch+ultralytics combos
-- `torch.load` security change (`weights_only=True`) required special handling
-
-CPU training is stable and produced strong results (e.g., good mAP50). If I must use MPS, a more compatible stack is Python 3.11 + torch 2.1.0 + ultralytics 8.0.120 with conservative settings (amp=False, small batch/imgsz, minimal augments) and validating on CPU — but this requires a separate environment.
-
----
-
-## Data Types Flow
-
-**User Upload**: UIImage → Data (JPEG/PNG)
-*Example: User selects photo from camera roll → 2.3MB JPEG data*
-
-**Backend**: UploadFile → bytes → PIL.Image
-*Example: FastAPI receives multipart file → 2,300,000 bytes → PIL Image object (640×480 RGB)*
-
-**YOLO Input**: PIL.Image
-*Example: PIL Image (640×480×3) ready for model inference*
-
-**YOLO Output**: List[Results] with boxes, confidence, classes
-*Example: 2 detections with boxes=[(90,40,210,160), (300,200,420,320)], conf=[0.91, 0.84], cls=["tomato", "cheese"]*
-
-**Processing**: Map model class names → human-friendly names, keep confidences
-*Example: {ingredients: ["Tomato", "Cheese"], confidence: [0.91, 0.84]}*
-
-**Response**: DetectionResponse (ingredients, confidence, time)
-*Example: {"ingredients": ["Tomato", "Cheese"], "confidence": [0.91, 0.84], "processing_time": 1.2}*
-
-**iOS**: [String] food names, [Double] confidence scores
-*Example: ["Tomato", "Cheese"] and [0.91, 0.84] displayed in UI*
-
----
 
 ## Quick Start Guide
 
