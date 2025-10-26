@@ -51,8 +51,10 @@ class LocalInferenceService: ObservableObject {
         "tomato": "Tomato"
     ]
     private let inputSize: CGFloat = 640
-    private let confidenceThreshold: Float = 0.1  // 與服務器端一致
-    private let iouThreshold: Float = 0.45  // 與服務器端一致
+    // 提高信心度閾值以過濾低品質檢測
+    // 經過 Sigmoid 後，需要更高的閾值來確保檢測品質
+    private let confidenceThreshold: Float = 0.5  // 50% 信心度
+    private let iouThreshold: Float = 0.45  // NMS IoU 閾值
 
     init() {
         setupModel()
@@ -156,7 +158,9 @@ class LocalInferenceService: ObservableObject {
                 }
             }
             
-            request.imageCropAndScaleOption = .scaleFill
+            // 使用 .scaleFit 保持圖片比例，與 Server 端的 Letterbox 一致
+            // .scaleFill 會強制拉伸圖片，導致物體變形，辨識準確度下降
+            request.imageCropAndScaleOption = .scaleFit
             
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             do {
@@ -193,46 +197,89 @@ class LocalInferenceService: ObservableObject {
         print("🔍 CoreML output shape: \(multiArray.shape)")
         print("🔍 Total elements: \(multiArray.count)")
 
-        // The output shape is typically (1, 16, 8400) for YOLOv8n, where 16 = 4 (bbox) + 1 (conf) + 11 (classes)
-        // Reshape to (num_boxes, num_features) for easier processing
+        // CoreML output shape: [batch, features, boxes] = [1, 15 or 16, 8400]
+        let batchSize = multiArray.shape[0].intValue // 1
+        let numFeatures = multiArray.shape[1].intValue // 15 or 16
         let numBoxes = multiArray.shape[2].intValue // 8400
-        let numFeatures = multiArray.shape[1].intValue // 16 (4 bbox + 1 obj_conf + 11 class_conf)
         
-        print("🔍 解析參數: numBoxes=\(numBoxes), numFeatures=\(numFeatures), numClasses=\(classLabels.count)")
+        print("🔍 解析參數: batch=\(batchSize), numFeatures=\(numFeatures), numBoxes=\(numBoxes), numClasses=\(classLabels.count)")
 
         var detections: [DetectedObject] = []
         var maxConfidence: Float = 0.0
 
-        for i in 0..<numBoxes {
-            let boxConfidence = multiArray[i * numFeatures + 4].floatValue // Objectness score
-            
-            if boxConfidence < 0.001 { continue } // Early filtering
+        // 檢查模型輸出格式：15 特徵（無 objectness）或 16 特徵（有 objectness）
+        let hasObjectness = (numFeatures == 16)
+        let classStartIndex = hasObjectness ? 5 : 4
+        
+        print("🔍 模型格式: \(hasObjectness ? "有 objectness (16 特徵)" : "無 objectness (15 特徵)")")
+        print("🔍 類別起始索引: \(classStartIndex)")
+        
+        // Debug: 檢查原始分數範圍來判斷是否已經過 Sigmoid
+        var rawScoreSamples: [Float] = []
+        var sigmoidScoreSamples: [Float] = []
+        for i in 0..<min(5, numBoxes) {
+            for j in 0..<min(3, classLabels.count) {
+                let featureIndex = classStartIndex + j
+                let rawScore = multiArray[[0, featureIndex, i] as [NSNumber]].floatValue
+                rawScoreSamples.append(rawScore)
+                sigmoidScoreSamples.append(sigmoid(rawScore))
+            }
+        }
+        print("🔍 原始分數樣本: \(rawScoreSamples.prefix(5).map { String(format: "%.3f", $0) }.joined(separator: ", "))")
+        print("🔍 經過 Sigmoid: \(sigmoidScoreSamples.prefix(5).map { String(format: "%.3f", $0) }.joined(separator: ", "))")
+        
+        // 判斷模型輸出是否已經過 Sigmoid
+        let alreadySigmoided = rawScoreSamples.allSatisfy { $0 >= 0 && $0 <= 1 }
+        print("🔍 模型輸出已經過 Sigmoid: \(alreadySigmoided ? "是" : "否")")
 
+        for i in 0..<numBoxes {
+            // 讀取類別分數
+            // 正確的索引：multiArray[batch, feature, box]
             var classScores: [Float] = []
             for j in 0..<classLabels.count {
-                classScores.append(multiArray[i * numFeatures + 5 + j].floatValue)
+                let featureIndex = classStartIndex + j
+                // 使用多維索引訪問：[batch=0, feature=featureIndex, box=i]
+                let rawScore = multiArray[[0, featureIndex, i] as [NSNumber]].floatValue
+                // 根據模型輸出決定是否應用 Sigmoid
+                let score = alreadySigmoided ? rawScore : sigmoid(rawScore)
+                classScores.append(score)
             }
 
             guard let maxClassScore = classScores.max(),
                   let classIndex = classScores.firstIndex(of: maxClassScore) else {
                 continue
             }
+            
+            // 提前過濾：如果最高類別分數太低，直接跳過
+            if maxClassScore < confidenceThreshold {
+                continue
+            }
 
-            let finalConfidence = maxClassScore * boxConfidence
+            // 計算最終信心度
+            let finalConfidence: Float
+            if hasObjectness {
+                // 格式 A: 有 objectness，需要相乘
+                let rawObjectness = multiArray[[0, 4, i] as [NSNumber]].floatValue
+                let boxConfidence = alreadySigmoided ? rawObjectness : sigmoid(rawObjectness)
+                if boxConfidence < 0.001 { continue }
+                finalConfidence = maxClassScore * boxConfidence
+            } else {
+                // 格式 B: 無 objectness，直接使用類別分數
+                finalConfidence = maxClassScore
+            }
             
             if finalConfidence > maxConfidence {
                 maxConfidence = finalConfidence
             }
 
-            if finalConfidence < confidenceThreshold { continue }
-
             let label = classLabels[classIndex]
 
             // Bounding box coordinates (x, y, width, height) - normalized
-            let x = multiArray[i * numFeatures].floatValue
-            let y = multiArray[i * numFeatures + 1].floatValue
-            let width = multiArray[i * numFeatures + 2].floatValue
-            let height = multiArray[i * numFeatures + 3].floatValue
+            // 使用多維索引訪問：[batch=0, feature=0-3, box=i]
+            let x = multiArray[[0, 0, i] as [NSNumber]].floatValue
+            let y = multiArray[[0, 1, i] as [NSNumber]].floatValue
+            let width = multiArray[[0, 2, i] as [NSNumber]].floatValue
+            let height = multiArray[[0, 3, i] as [NSNumber]].floatValue
 
             // Convert YOLO format (center_x, center_y, width, height) to CGRect (min_x, min_y, width, height)
             let rect = CGRect(
@@ -282,6 +329,11 @@ class LocalInferenceService: ObservableObject {
 
         if unionArea == 0 { return 0 }
         return Float(intersectionArea / unionArea)
+    }
+    
+    // Sigmoid 函數：將 logits 轉換為機率值 (0-1)
+    private func sigmoid(_ x: Float) -> Float {
+        return 1.0 / (1.0 + exp(-x))
     }
     
     private func removeDuplicatesByDetection(detections: [DetectedObject]) -> [DetectedObject] {

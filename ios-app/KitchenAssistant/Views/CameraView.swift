@@ -14,7 +14,10 @@ struct CameraView: View {
     @State private var mealCraving = ""
     @State private var apiClient = APIClient()
     @State private var localInferenceService = LocalInferenceService()
+    @State private var localLLMGenerator = LocalLLMRecipeGenerator()
+    @State private var mlxGenerator: MLXRecipeGenerator?
     @AppStorage("useLocalProcessing") private var useLocalProcessing = true
+    @AppStorage("useMLXGeneration") private var useMLXGeneration = false
     @State private var errorMessage: String?
     @State private var showRecipeDetail = false
 
@@ -26,8 +29,8 @@ struct CameraView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
-                    
+                VStack(spacing: 12) {  // 減少從 20 到 12
+
                     if let image = capturedImage {
                         ImageDisplayView(
                             image: image,
@@ -46,10 +49,10 @@ struct CameraView: View {
                             inputSource: $inputSource
                         )
                     }
-                    
+
                     if capturedImage != nil {
                         MealCravingInput(mealCraving: $mealCraving)
-                        
+
                         if detectedIngredients.isEmpty && !isLoading {
                             ProcessImageButton(
                                 action: { Task { await processImage() } },
@@ -63,15 +66,16 @@ struct CameraView: View {
                             )
                         }
                     }
-                    
+
                     if isLoading {
                         LoadingView()
                     }
-                    
+
                     if let errorMessage {
                         Text(errorMessage)
                             .foregroundColor(.red)
-                            .padding()
+                            .font(.caption)
+                            .padding(.vertical, 8)
                     }
 
                     // Display generated recipe
@@ -81,7 +85,9 @@ struct CameraView: View {
                         }
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+                .padding(.bottom, 30)  // 更多底部空間，避免被 tab bar 擋住
             }
             .navigationTitle("Scan Fridge")
         }
@@ -141,22 +147,60 @@ struct CameraView: View {
     
     private func generateRecipe() {
         guard !detectedIngredients.isEmpty else { return }
-        
+
         isLoading = true
-        
+        errorMessage = nil
+
         Task {
             do {
-                let recipe = try await apiClient.generateRecipe(
-                    ingredients: detectedIngredients,
-                    mealCraving: mealCraving
-                )
+                let recipe: Recipe
+
+                if useLocalProcessing {
+                    // 使用本地 LLM 生成食譜
+                    if useMLXGeneration {
+                        // 使用 MLX on-device 生成
+                        print("🤖 Using MLX on-device LLM for recipe generation")
+                        if #available(iOS 16.0, *) {
+                            if mlxGenerator == nil {
+                                mlxGenerator = MLXRecipeGenerator()
+                            }
+                            recipe = try await mlxGenerator!.generateRecipe(
+                                ingredients: detectedIngredients,
+                                mealCraving: mealCraving
+                            )
+                        } else {
+                            print("⚠️ MLX not available on this iOS version, using Ollama")
+                            recipe = try await localLLMGenerator.generateRecipe(
+                                ingredients: detectedIngredients,
+                                mealCraving: mealCraving
+                            )
+                        }
+                    } else {
+                        // 使用 Ollama 本地 API
+                        print("🔧 Using local Ollama API for recipe generation")
+                        recipe = try await localLLMGenerator.generateRecipe(
+                            ingredients: detectedIngredients,
+                            mealCraving: mealCraving
+                        )
+                    }
+                } else {
+                    // 使用 Server LLM 生成食譜
+                    print("🌐 Using server LLM for recipe generation")
+                    recipe = try await apiClient.generateRecipe(
+                        ingredients: detectedIngredients,
+                        mealCraving: mealCraving
+                    )
+                }
+
                 await MainActor.run {
                     self.generatedRecipe = recipe
                     self.isLoading = false
                 }
             } catch {
+                let errorDescription = error.localizedDescription
                 await MainActor.run {
                     self.isLoading = false
+                    self.errorMessage = "Recipe generation failed: \(errorDescription)"
                 }
                 print("Error generating recipe: \(error)")
             }
@@ -226,21 +270,22 @@ struct ImageDisplayView: View {
     let image: UIImage
     let detectedIngredients: [String]
     let onRetake: () -> Void
-    
+
     var body: some View {
-        VStack(spacing: 15) {
+        VStack(spacing: 12) {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(maxHeight: 300)
+                .frame(maxHeight: 200)  // 減少從 300 到 200
                 .cornerRadius(12)
-                .shadow(radius: 5)
-            
+                .shadow(radius: 3)
+
             if !detectedIngredients.isEmpty {
                 IngredientsList(ingredients: detectedIngredients)
             }
-            
+
             Button("Retake Photo", action: onRetake)
+                .font(.subheadline)
                 .foregroundColor(.orange)
         }
     }
@@ -248,28 +293,30 @@ struct ImageDisplayView: View {
 
 struct IngredientsList: View {
     let ingredients: [String]
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Detected Ingredients:")
-                .font(.headline)
-            
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible())
-            ], spacing: 8) {
+            ], spacing: 6) {
                 ForEach(Array(ingredients.enumerated()), id: \.offset) { index, ingredient in
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
+                            .font(.system(size: 10))
                         Text(ingredient)
-                            .font(.body)
+                            .font(.caption)
                         Spacer()
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .background(Color.green.opacity(0.1))
-                    .cornerRadius(8)
+                    .cornerRadius(6)
                 }
             }
         }
@@ -279,12 +326,13 @@ struct IngredientsList: View {
 
 struct MealCravingInput: View {
     @Binding var mealCraving: String
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("What are you craving?")
-                .font(.headline)
-            
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
             TextField("e.g., pasta, stir-fry, salad", text: $mealCraving)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .autocapitalization(.none)
@@ -296,13 +344,14 @@ struct MealCravingInput: View {
 struct ProcessImageButton: View {
     let action: () async -> Void
     let isEnabled: Bool
-    
+
     var body: some View {
         Button(action: { Task { await action() } }) {
             Text("Process Image")
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.semibold)
                 .frame(maxWidth: .infinity)
-                .padding()
+                .padding(.vertical, 12)
                 .background(isEnabled ? Color.green : Color.gray)
                 .foregroundColor(.white)
                 .cornerRadius(10)
@@ -315,7 +364,7 @@ struct GenerateRecipeButton: View {
     let action: () async -> Void
     let isEnabled: Bool
     let isLoading: Bool
-    
+
     var body: some View {
         Button(action: { Task { await action() } }) {
             HStack {
@@ -324,11 +373,12 @@ struct GenerateRecipeButton: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .scaleEffect(0.8)
                 }
-                Text(isLoading ? "Generating Recipe..." : "Generate Recipe")
-                    .font(.headline)
+                Text(isLoading ? "Generating..." : "Generate Recipe")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
             }
             .frame(maxWidth: .infinity)
-            .padding()
+            .padding(.vertical, 12)
             .background(isEnabled && !isLoading ? Color.blue : Color.gray)
             .foregroundColor(.white)
             .cornerRadius(10)

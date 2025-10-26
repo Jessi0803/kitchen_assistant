@@ -49,45 +49,49 @@ struct ContentView: View {
 struct HomeView: View {
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                Image(systemName: "refrigerator.fill")
-                    .font(.system(size: 80))
+            ScrollView {
+                VStack(spacing: 30) {
+                    Image(systemName: "refrigerator.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.green)
+                        .padding(.top, 20)
+
+                    Text("Edge-AI Kitchen Assistant")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+
+                    Text("Take a photo of your fridge and get instant recipe suggestions!")
+                        .font(.body)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Image(systemName: "camera")
+                            Text("Scan your fridge")
+                        }
+                        HStack {
+                            Image(systemName: "eye")
+                            Text("AI detects ingredients")
+                        }
+                        HStack {
+                            Image(systemName: "book")
+                            Text("Get personalized recipes")
+                        }
+                        HStack {
+                            Image(systemName: "lock.shield")
+                            Text("100% private & offline")
+                        }
+                    }
                     .foregroundColor(.green)
-                
-                Text("Edge-AI Kitchen Assistant")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.center)
-                
-                Text("Take a photo of your fridge and get instant recipe suggestions!")
-                    .font(.body)
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
-                
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Image(systemName: "camera")
-                        Text("Scan your fridge")
-                    }
-                    HStack {
-                        Image(systemName: "eye")
-                        Text("AI detects ingredients")
-                    }
-                    HStack {
-                        Image(systemName: "book")
-                        Text("Get personalized recipes")
-                    }
-                    HStack {
-                        Image(systemName: "lock.shield")
-                        Text("100% private & offline")
-                    }
+
+                    Spacer(minLength: 40)
                 }
-                .foregroundColor(.green)
-                
-                Spacer()
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding()
             .navigationTitle("Kitchen Assistant")
         }
     }
@@ -95,6 +99,7 @@ struct HomeView: View {
 
 struct SettingsView: View {
     @AppStorage("useLocalProcessing") private var useLocalProcessing = true
+    @AppStorage("useMLXGeneration") private var useMLXGeneration = false
     @State private var dietaryRestrictions = ""
     @State private var preferredCuisine = "Any"
     
@@ -103,11 +108,66 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section("Processing") {
+                Section(header: Text("AI Processing Mode")) {
                     Toggle("Use Local AI Processing", isOn: $useLocalProcessing)
-                    Text("When enabled, all processing happens on your device for maximum privacy")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    
+                    if useLocalProcessing {
+                        Toggle("Use On-Device MLX LLM", isOn: $useMLXGeneration)
+                            .disabled(!useLocalProcessing)
+                        
+                        if useMLXGeneration {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("🤖 MLX On-Device Mode")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.green)
+                                Text("• 100% offline, model runs on your device")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("• Slower but completely private")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("• Requires iPhone 12+ or M1+ Mac")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        } else {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("🔧 Ollama API Mode")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.orange)
+                                Text("• Connects to local Ollama service")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("• Faster generation (localhost:11434)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("• Requires Ollama running on Mac")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("🌐 Cloud Server Mode")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                            Text("• Connects to remote API server")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text("• Requires internet connection")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text("• Works on any device")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
                 
                 Section("Dietary Preferences") {
@@ -134,7 +194,19 @@ struct SettingsView: View {
                     HStack {
                         Text("AI Models")
                         Spacer()
-                        Text("YOLO + LLaMA")
+                        VStack(alignment: .trailing) {
+                            Text("YOLOv8n (CoreML)")
+                                .foregroundColor(.secondary)
+                            Text("Qwen2.5-0.5B (MLX)")
+                                .foregroundColor(.secondary)
+                                .font(.caption2)
+                        }
+                    }
+                    
+                    HStack {
+                        Text("Model Size")
+                        Spacer()
+                        Text("~290MB")
                             .foregroundColor(.secondary)
                     }
                 }
@@ -150,42 +222,45 @@ struct RecipeTab: View {
 
     var body: some View {
         NavigationView {
-            Group {
+            ScrollView {
                 if let recipe = recipe {
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(.green)
+                    VStack(spacing: 15) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.green)
+                            .padding(.top, 15)
 
-                            Text("Your Recipe is Ready!")
-                                .font(.title2)
-                                .fontWeight(.bold)
+                        Text("Your Recipe is Ready!")
+                            .font(.title3)
+                            .fontWeight(.bold)
 
-                            RecipePreviewCard(recipe: recipe) {
-                                showRecipeDetail = true
-                            }
-                            .padding(.horizontal)
+                        RecipePreviewCard(recipe: recipe) {
+                            showRecipeDetail = true
                         }
-                        .padding(.vertical)
+                        .padding(.horizontal)
+
+                        // 底部留白
+                        Color.clear.frame(height: 60)
                     }
+                    .padding(.vertical, 12)
                 } else {
                     VStack(spacing: 20) {
                         Image(systemName: "book.closed")
-                            .font(.system(size: 80))
+                            .font(.system(size: 70))
                             .foregroundColor(.secondary)
+                            .padding(.top, 40)
 
                         Text("No Recipe Yet")
-                            .font(.title2)
+                            .font(.title3)
                             .fontWeight(.bold)
 
                         Text("Generate a recipe by scanning your fridge in the 'Scan Fridge' tab")
-                            .font(.body)
+                            .font(.subheadline)
                             .multilineTextAlignment(.center)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
 
-                        Spacer()
+                        Spacer(minLength: 100)
                     }
                     .padding()
                 }
@@ -205,21 +280,23 @@ struct RecipePreviewCard: View {
     let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(recipe.title)
-                .font(.title)
+                .font(.title3)
                 .fontWeight(.bold)
+                .lineLimit(2)
 
             Text(recipe.description)
-                .font(.body)
+                .font(.caption)
                 .foregroundColor(.secondary)
+                .lineLimit(2)
 
-            HStack(spacing: 20) {
+            HStack(spacing: 15) {
                 Label("\(recipe.prepTime + recipe.cookTime) min", systemImage: "clock.fill")
-                    .font(.subheadline)
+                    .font(.caption)
 
                 Label("\(recipe.servings) servings", systemImage: "person.2.fill")
-                    .font(.subheadline)
+                    .font(.caption)
 
                 Spacer()
             }
@@ -227,33 +304,35 @@ struct RecipePreviewCard: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Ingredients (\(recipe.ingredients.count))")
-                    .font(.headline)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
 
                 ForEach(recipe.ingredients.prefix(3)) { ingredient in
                     HStack {
                         Image(systemName: "circle.fill")
-                            .font(.system(size: 6))
+                            .font(.system(size: 5))
                             .foregroundColor(.green)
 
                         Text(ingredient.displayText)
-                            .font(.subheadline)
+                            .font(.caption)
                     }
                 }
 
                 if recipe.ingredients.count > 3 {
                     Text("+ \(recipe.ingredients.count - 3) more...")
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
 
             Button(action: action) {
                 Text("View Full Recipe")
-                    .font(.headline)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
-                    .padding()
+                    .padding(.vertical, 12)
                     .background(Color.green)
                     .foregroundColor(.white)
                     .cornerRadius(10)
@@ -261,8 +340,8 @@ struct RecipePreviewCard: View {
         }
         .padding()
         .background(Color(.systemGray6))
-        .cornerRadius(16)
-        .shadow(radius: 5)
+        .cornerRadius(12)
+        .shadow(radius: 3)
     }
 }
 

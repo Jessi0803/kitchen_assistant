@@ -25,6 +25,17 @@ __pycache__/
 env/
 venv/
 ENV/
+*_venv/
+*_venv_*/
+
+# ML Models (large files)
+*.mlpackage/
+*.onnx
+*.gguf
+*.mlmodel
+
+# External repositories
+llama-cpp-repo/
 
 # IDE
 .vscode/

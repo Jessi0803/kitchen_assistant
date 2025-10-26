@@ -2,15 +2,19 @@
 
 echo "Starting Kitchen Assistant Backend..."
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv venv
+# Use fresh_venv (Python 3.13) for FastAPI backend
+if [ ! -d "fresh_venv" ]; then
+    echo "❌ Virtual environment 'fresh_venv' not found!"
+    echo "Please create it first:"
+    echo "  python3.13 -m venv fresh_venv"
+    echo "  source fresh_venv/bin/activate"
+    echo "  pip install -r requirements.txt"
+    exit 1
 fi
 
 # Activate virtual environment
-echo "Activating virtual environment..."
-source venv/bin/activate
+echo "Activating fresh_venv (Python 3.13)..."
+source fresh_venv/bin/activate
 
 # Install dependencies
 echo "Installing dependencies..."

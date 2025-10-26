@@ -50,12 +50,10 @@ iOS App → FastAPI Backend → YOLO (Ingredient Detection) → Qwen2.5:3b (Reci
 - **Chip**: Apple M3 (8-core CPU + 10-core GPU)
 - **RAM**: 16 GB unified memory
 - **OS**: macOS 14.6.1 (Sonoma)
-- **Architecture**: ARM64 (Apple Silicon)
 
 #### Software Versions
 - **Python**: 3.13.5
 - **Xcode**: 16.2 (Build 16C5032a)
-- **iOS Deployment Target**: 17.0+
 - **Ollama**: 0.12.3
 
 ---
@@ -67,10 +65,7 @@ iOS App → FastAPI Backend → YOLO (Ingredient Detection) → Qwen2.5:3b (Reci
 ##### Web Framework & API
 ```python
 fastapi==0.104.1                    # Modern async web framework
-uvicorn[standard]==0.24.0           # ASGI server
-python-multipart==0.0.6             # File upload support
 pydantic==2.5.0                     # Data validation
-aiofiles==23.2.1                    # Async file operations
 ```
 
 ##### Computer Vision & Deep Learning (YOLOv8n Fine-tuning)
@@ -86,21 +81,10 @@ numpy==2.2.6                        # Numerical computing
 scipy==1.15.3                       # Scientific algorithms
 matplotlib==3.10.6                  # Visualization
 
-# Data Processing
-polars==1.33.1                      # Fast DataFrame library
-PyYAML==6.0.3                       # YAML parser for configs
 ```
 
-**Why these versions?**
-- `torch==2.8.0` + `ultralytics==8.3.203`: Latest stable combination for Python 3.13
-- `opencv-python==4.12.0.88`: Full OpenCV support including contrib modules
-- CPU-only training for stability (MPS training had compatibility issues on Python 3.13)
 
 ##### Model Deployment & Inference
-```python
-onnxruntime==1.23.0                 # ONNX model runtime
-Pillow==11.3.0                      # Image loading/manipulation
-```
 
 ##### LLM Integration (Recipe Generation)
 ```bash
@@ -121,8 +105,6 @@ ollama                              # Python client for Ollama API
 ##### Utilities
 ```python
 requests==2.32.5                    # HTTP client
-certifi==2025.8.3                   # SSL certificates
-psutil==7.1.0                       # System monitoring
 ```
 
 ---
@@ -133,34 +115,18 @@ psutil==7.1.0                       # System monitoring
 - **Language**: Swift 5.x
 - **UI Framework**: SwiftUI (iOS 17.0+)
 - **Architecture**: MVVM (Model-View-ViewModel)
-- **Async/Await**: Swift Concurrency
-- **Navigation**: SwiftUI Navigation
-
-#### Key iOS Frameworks
-```swift
-import SwiftUI              // Declarative UI framework
-import UIKit                // UIImage, UIImagePickerController
-import Foundation           // Core utilities (URLSession, Codable)
-import PhotosUI             // Photo library access
-import Combine              // Reactive programming
 ```
 
 #### Data Layer
 - **Networking**:
   - `URLSession` for HTTP requests
   - `async/await` for asynchronous operations
-  - `Codable` for JSON encoding/decoding
 
 - **State Management**:
   - `@State` for local view state
   - `@Binding` for two-way data binding
   - `@ObservableObject` for shared state
-  - `@AppStorage` for user preferences
 
-#### No External Dependencies
-- **Zero third-party pods/packages**
-- All functionality built with native iOS frameworks
-- Lightweight and maintainable
 
 ---
 
@@ -310,11 +276,34 @@ iPhone 15 Pro simulator (iOS 17.0+)
 
 I fine-tune `yolov8n.pt` on my food dataset using a CPU.
 
+### Virtual Environments
+
+This project uses two virtual environments:
+
+| Environment | Python | Purpose |
+|------------|--------|---------|
+| `fresh_venv` | 3.13.5 | FastAPI backend, training (optional) |
+| `yolo_venv_310` | 3.10.12 | **CoreML export** (required), training (optional) |
+
+**Note**: CoreML export requires `yolo_venv_310` due to better `coremltools` compatibility.
+
 ### How to run
+
+#### Option 1: Training (use either environment)
 ```bash
 cd backend
 source fresh_venv/bin/activate
+# or: source yolo_venv_310/bin/activate
 python3 fine_tune_yolo_cpu_aug.py
+deactivate
+```
+
+#### Option 2: Export to CoreML (must use yolo_venv_310)
+```bash
+cd backend
+source yolo_venv_310/bin/activate
+python3 export_coreml.py
+deactivate
 ```
 
 ### Training process

@@ -18,8 +18,10 @@ def main():
     model = YOLO(model_path)
 
     print("🔄 Exporting to CoreML format...")
+    print("⚠️  注意：CoreML 的 NMS 可能不穩定，建議使用 nms=False 並在 Swift 中手動實作")
     try:
         # Export to CoreML
+        # 使用 nms=False 因為 CoreML 的內建 NMS 輸出格式不穩定
         model.export(
             format='coreml',
             imgsz=640,
@@ -27,8 +29,8 @@ def main():
             half=False,
             dynamic=False,
             simplify=True,
-            nms=True,  # Include NMS in the model
-            batch=1    # Set batch size to 1 for mobile deployment
+            nms=False,  # 不使用內建 NMS，在 iOS 端手動實作
+            batch=1     # Set batch size to 1 for mobile deployment
         )
         print("✅ CoreML export completed!")
 

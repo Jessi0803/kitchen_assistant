@@ -229,45 +229,77 @@ async def generate_recipe_with_llm(request: RecipeRequest) -> Recipe:
     """
     # Create prompt for LLM
     ingredients_str = ", ".join(request.ingredients)
+    dietary_str = ", ".join(request.dietaryRestrictions) if request.dietaryRestrictions else "None"
 
-    prompt = f"""You are a professional chef. Create a detailed recipe based on these ingredients.
+    prompt = f"""You are a professional chef AI. Create a detailed recipe for "{request.mealCraving}" using these ingredients: {ingredients_str}
 
-Available Ingredients: {ingredients_str}
-Desired Meal: {request.mealCraving}
-Dietary Restrictions: {", ".join(request.dietaryRestrictions) if request.dietaryRestrictions else "None"}
-Preferred Cuisine: {request.preferredCuisine}
+CRITICAL RULES - FOLLOW STRICTLY:
 
-Generate a recipe in JSON format with the following structure:
+1. INGREDIENT UNITS (use CORRECT units for each ingredient type):
+   - Cheese: "cup", "oz", "g" (NEVER "clove" - that's for garlic!)
+   - Garlic: "clove", "tsp", "tbsp"
+   - Vegetables: "cup", "whole", "pieces"
+   - Liquids: "cup", "ml", "tbsp", "tsp"
+   - Meat: "lb", "oz", "g", "pieces"
+   - Spices: "tsp", "tbsp", "pinch"
+
+2. DISH TYPE VALIDATION:
+   - If dish is "{request.mealCraving.lower()}":
+     * For DESSERTS (cake, cookies, pie): Use SWEET ingredients (sugar, vanilla, chocolate, butter, eggs, flour)
+     * For SAVORY dishes (pasta, stir-fry, soup): Use SAVORY ingredients (salt, pepper, garlic, oil, herbs)
+     * NEVER mix sweet/savory incorrectly (e.g., NO salt in cheesecake!)
+
+3. COOKING INSTRUCTIONS:
+   - Must match the dish type exactly
+   - Pasta: boil water, cook pasta, make sauce, combine
+   - Cake: mix dry, mix wet, combine, bake
+   - Stir-fry: prep ingredients, heat wok, stir-fry, season
+   - Each step must be specific, not generic
+
+4. REALISTIC AMOUNTS:
+   - Servings: 2-6 people
+   - Prep time: 5-30 minutes
+   - Cook time: 10-60 minutes (0 for salads/no-cook)
+
+EXAMPLE - Cheese Cake (CORRECT):
 {{
-  "title": "Recipe name",
-  "description": "Brief description (1-2 sentences)",
-  "prep_time": <number in minutes>,
-  "cook_time": <number in minutes>,
-  "servings": <number>,
-  "difficulty": "Easy|Medium|Hard",
+  "title": "Classic New York Cheesecake",
+  "description": "Rich and creamy cheesecake with graham cracker crust",
+  "prep_time": 20,
+  "cook_time": 60,
+  "servings": 8,
+  "difficulty": "Medium",
   "ingredients": [
-    {{"name": "ingredient name", "amount": "quantity", "unit": "unit", "notes": "optional notes"}}
+    {{"name": "Cream cheese", "amount": "16", "unit": "oz", "notes": "softened"}},
+    {{"name": "Sugar", "amount": "3/4", "unit": "cup", "notes": null}},
+    {{"name": "Eggs", "amount": "3", "unit": "whole", "notes": "room temperature"}},
+    {{"name": "Vanilla extract", "amount": "1", "unit": "tsp", "notes": null}},
+    {{"name": "Graham crackers", "amount": "1.5", "unit": "cups", "notes": "crushed"}}
   ],
   "instructions": [
-    {{"step": 1, "text": "instruction text", "time": <optional minutes>, "temperature": "optional temp", "tips": "optional tip"}}
+    {{"step": 1, "text": "Preheat oven to 325°F. Make crust by mixing crushed graham crackers with melted butter.", "time": 5, "temperature": "325°F", "tips": "Press firmly into pan"}},
+    {{"step": 2, "text": "Beat cream cheese until smooth. Add sugar and beat until fluffy.", "time": 5, "temperature": null, "tips": "No lumps"}},
+    {{"step": 3, "text": "Add eggs one at a time, beating well after each. Add vanilla.", "time": 3, "temperature": null, "tips": "Don't overmix"}},
+    {{"step": 4, "text": "Pour filling over crust. Bake for 50-60 minutes until edges set but center jiggles.", "time": 60, "temperature": "325°F", "tips": "Don't open oven door"}},
+    {{"step": 5, "text": "Cool completely, then refrigerate 4 hours before serving.", "time": 240, "temperature": null, "tips": "Patience is key"}}
   ],
-  "tags": ["tag1", "tag2"],
-  "nutrition_info": {{
-    "calories": <number>,
-    "protein": "Xg",
-    "carbs": "Xg",
-    "fat": "Xg",
-    "fiber": "Xg",
-    "sugar": "Xg",
-    "sodium": "Xmg"
-  }}
+  "tags": ["Dessert", "Baked", "Classic"],
+  "nutrition_info": {{"calories": 380, "protein": "7g", "carbs": "32g", "fat": "26g", "fiber": "0g", "sugar": "24g", "sodium": "320mg"}}
 }}
 
-IMPORTANT:
-1. Only use the available ingredients provided
-2. Keep instructions clear and practical
-3. Return ONLY valid JSON, no additional text
-4. Make the recipe realistic and delicious"""
+NOW CREATE YOUR RECIPE:
+- Dish Type: {request.mealCraving}
+- Available Ingredients: {ingredients_str}
+- Dietary Restrictions: {dietary_str}
+- Preferred Cuisine: {request.preferredCuisine}
+
+REMEMBER:
+- Use CORRECT units for each ingredient (cheese = cups/oz, NOT cloves!)
+- Match ingredients to dish type (sweet for desserts, savory for mains)
+- Write specific instructions, not generic ones
+- Return ONLY valid JSON, no extra text
+
+JSON response:"""
 
     print(f"🤖 Generating recipe with Qwen2.5:3b for: {request.mealCraving}")
 

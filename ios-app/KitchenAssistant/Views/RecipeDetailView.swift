@@ -6,46 +6,47 @@ struct RecipeDetailView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(recipe.title)
-                            .font(.system(size: 28, weight: .bold))
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Header
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(recipe.title)
+                                .font(.system(size: 24, weight: .bold))
 
-                        Text(recipe.description)
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                            Text(recipe.description)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
 
-                        // Recipe metadata
-                        HStack(spacing: 20) {
-                            MetadataItem(icon: "clock", text: "\(recipe.prepTime + recipe.cookTime) min")
-                            MetadataItem(icon: "person.2", text: "\(recipe.servings) servings")
-                            DifficultyBadge(difficulty: recipe.difficulty)
+                            // Recipe metadata
+                            HStack(spacing: 15) {
+                                MetadataItem(icon: "clock", text: "\(recipe.prepTime + recipe.cookTime) min")
+                                MetadataItem(icon: "person.2", text: "\(recipe.servings) servings")
+                                DifficultyBadge(difficulty: recipe.difficulty)
+                            }
+                            .padding(.top, 4)
                         }
-                        .padding(.top, 5)
-                    }
-                    .padding(.horizontal)
+                        .padding(.horizontal)
 
                     Divider()
 
                     // Ingredients Section
-                    VStack(alignment: .leading, spacing: 15) {
+                    VStack(alignment: .leading, spacing: 10) {
                         SectionHeader(title: "Ingredients", icon: "list.bullet")
 
                         ForEach(recipe.ingredients) { ingredient in
                             HStack(alignment: .top) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
-                                    .font(.system(size: 12))
-                                    .padding(.top, 4)
+                                    .font(.system(size: 10))
+                                    .padding(.top, 3)
 
                                 Text(ingredient.displayText)
-                                    .font(.body)
+                                    .font(.caption)
 
                                 Spacer()
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 2)
                         }
                     }
                     .padding(.horizontal)
@@ -53,7 +54,7 @@ struct RecipeDetailView: View {
                     Divider()
 
                     // Instructions Section
-                    VStack(alignment: .leading, spacing: 15) {
+                    VStack(alignment: .leading, spacing: 10) {
                         SectionHeader(title: "Instructions", icon: "list.number")
 
                         ForEach(recipe.instructions) { instruction in
@@ -66,13 +67,13 @@ struct RecipeDetailView: View {
                     if let nutrition = recipe.nutritionInfo {
                         Divider()
 
-                        VStack(alignment: .leading, spacing: 15) {
+                        VStack(alignment: .leading, spacing: 10) {
                             SectionHeader(title: "Nutrition Info", icon: "heart.circle")
 
                             LazyVGrid(columns: [
                                 GridItem(.flexible()),
                                 GridItem(.flexible())
-                            ], spacing: 12) {
+                            ], spacing: 8) {
                                 if let calories = nutrition.calories {
                                     NutritionItem(label: "Calories", value: "\(calories)")
                                 }
@@ -100,37 +101,57 @@ struct RecipeDetailView: View {
                     if !recipe.tags.isEmpty {
                         Divider()
 
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 8) {
                             SectionHeader(title: "Tags", icon: "tag")
 
-                            FlowLayout(spacing: 8) {
+                            FlowLayout(spacing: 6) {
                                 ForEach(recipe.tags, id: \.self) { tag in
                                     Text(tag)
-                                        .font(.caption)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
+                                        .font(.caption2)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
                                         .background(Color.green.opacity(0.2))
                                         .foregroundColor(.green)
-                                        .cornerRadius(16)
+                                        .cornerRadius(12)
                                 }
                             }
                         }
                         .padding(.horizontal)
                     }
 
-                    Spacer(minLength: 20)
+                    // 重要：底部留白，避免被遮住 - 增加到 100px
+                    Color.clear.frame(height: 100)
                 }
-                .padding(.vertical)
+                .padding(.vertical, 12)
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
+
+            // 滾動提示指示器
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.gray.opacity(0.5))
+                        .padding(8)
+                        .background(Color.white.opacity(0.8))
+                        .clipShape(Circle())
+                        .shadow(radius: 2)
+                    Spacer()
+                }
+                .padding(.bottom, 10)
+            }
+            .allowsHitTesting(false)  // 不阻擋點擊事件
+        }  // <- ZStack 結束
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    dismiss()
                 }
             }
         }
+        }  // <- NavigationView 結束
     }
 }
 
@@ -193,51 +214,51 @@ struct InstructionRow: View {
     let instruction: Instruction
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 10) {
             // Step number
             ZStack {
                 Circle()
                     .fill(Color.green.opacity(0.2))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 26, height: 26)
 
                 Text("\(instruction.step)")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.green)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(instruction.text)
-                    .font(.body)
+                    .font(.caption)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     if let time = instruction.time {
                         Label("\(time) min", systemImage: "clock")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
 
                     if let temp = instruction.temperature {
                         Label(temp, systemImage: "thermometer")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                 }
 
                 if let tips = instruction.tips {
-                    HStack(alignment: .top, spacing: 6) {
+                    HStack(alignment: .top, spacing: 4) {
                         Image(systemName: "lightbulb.fill")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.yellow)
                         Text(tips)
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                             .italic()
                     }
-                    .padding(.top, 2)
+                    .padding(.top, 1)
                 }
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 }
 
@@ -246,18 +267,18 @@ struct NutritionItem: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundColor(.secondary)
             Text(value)
-                .font(.body)
+                .font(.caption)
                 .fontWeight(.semibold)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
+        .padding(8)
         .background(Color.gray.opacity(0.1))
-        .cornerRadius(8)
+        .cornerRadius(6)
     }
 }
 
