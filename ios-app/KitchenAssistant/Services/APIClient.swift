@@ -2,7 +2,15 @@ import Foundation
 import UIKit
 
 class APIClient: ObservableObject {
-    private let baseURL = "http://127.0.0.1:8000" // Backend server URL
+    // 自動偵測：Simulator 用 localhost，真機用 Mac IP
+    private let baseURL: String = {
+        #if targetEnvironment(simulator)
+        return "http://127.0.0.1:8000"  // Simulator: 使用 localhost
+        #else
+        return "http://192.168.86.27:8000"  // 真機: 使用 Mac 的 IP 地址
+        #endif
+    }()
+
     private let session = URLSession.shared
     
     enum APIError: Error, LocalizedError {

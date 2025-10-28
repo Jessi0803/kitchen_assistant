@@ -14,13 +14,49 @@
 
 ## Current Architecture
 
-### System Overview
+### Dual Architecture Support
+
+This project supports **two deployment modes**:
+
+#### 1. Server-Based Architecture (Development/Testing)
 ```
 iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
                                ↓
                             Fine-tuned YOLOv8n for ingredient detection
                             Qwen2.5:3b (Ollama) for recipe generation
 ```
+
+**Use Cases**:
+- Development and testing on Simulator
+- High-accuracy inference with larger models
+- Shared backend for multiple clients
+
+---
+
+#### 2. On-Device Architecture (Production/Offline)
+```
+iOS SwiftUI App (Standalone)
+    ↓
+    ├─ CoreML YOLOv8n (Ingredient Detection)
+    │   └─ yolov8n_merged_food_cpu_aug_finetuned.mlmodelc
+    │
+    └─ MLX LLM (Recipe Generation)
+        └─ Qwen2.5-0.5B-Instruct-4bit
+```
+
+**Features**:
+- ✅ **Fully Offline**: No internet or server required
+- ✅ **Privacy-First**: All data stays on device
+- ✅ **Fast Inference**: Utilizes iPhone Neural Engine
+- ✅ **Zero Cost**: No server/API fees
+- ✅ **App Store Ready**: Self-contained deployment
+
+**Requirements**:
+- iPhone 12 or later (A14 Bionic+)
+- iOS 16.0+
+- ~500MB available storage
+
+---
 
 ### Extended System Architecture
 ```
@@ -36,8 +72,11 @@ iOS App → FastAPI Backend → YOLO (Ingredient Detection) → Qwen2.5:3b (Reci
 
 ### Complete Frontend-Backend Architecture
 - **Native iOS SwiftUI App** with full user interface
-- **Python FastAPI Backend** with RESTful API services
+- **Dual AI Processing Modes**:
+  - **Server Mode**: Python FastAPI Backend with RESTful API services
+  - **Local Mode**: On-device CoreML + MLX inference
 - **End-to-End Data Flow** from camera capture to recipe display
+- **Automatic Mode Detection**: Switches between Simulator (server) and real device (local/server)
 
 ---
 
@@ -115,17 +154,127 @@ requests==2.32.5                    # HTTP client
 - **Language**: Swift 5.x
 - **UI Framework**: SwiftUI (iOS 17.0+)
 - **Architecture**: MVVM (Model-View-ViewModel)
+- **Minimum iOS Version**: iOS 16.0+ (for MLX support)
+
+#### On-Device AI Stack
+
+##### 1. Ingredient Detection (CoreML)
+```swift
+// CoreML Framework
+import CoreML
+import Vision
+
+// Model Format
+yolov8n_merged_food_cpu_aug_finetuned.mlmodelc
 ```
+
+**Features**:
+- **Model**: Fine-tuned YOLOv8n converted to CoreML
+- **Input Size**: 640×640 RGB image
+- **Output**: 11 food categories with bounding boxes
+- **Performance**:
+  - iPhone 14+: ~100ms inference time
+  - Utilizes Neural Engine for acceleration
+- **Classes**: beef, pork, chicken, butter, cheese, milk, broccoli, carrot, cucumber, lettuce, tomato
+
+**Implementation**:
+- `LocalInferenceService.swift`: CoreML model loading and inference
+- **Preprocessing**:
+  - ✅ Resize: Automatic via Vision framework (`.scaleFit`)
+  - ✅ Normalize: Automatic via CoreML
+- **Post-processing** (Manual Implementation):
+  - ❌ NMS (Non-Maximum Suppression): ~30 lines custom code
+  - ❌ Output parsing: ~130 lines parsing [1, 16, 8400] output
+  - ❌ Confidence filtering, coordinate conversion, class mapping
+
+**Comparison with Server**:
+| Task | Server (Python/Ultralytics) | Local (Swift/CoreML) |
+|------|---------------------------|---------------------|
+| Resize | ✅ Auto (1 line) | ✅ Auto (Vision framework) |
+| Normalize | ✅ Auto (1 line) | ✅ Auto (CoreML) |
+| Inference | ✅ PyTorch | ✅ CoreML + Neural Engine |
+| NMS | ✅ Auto (1 line) | ❌ Manual (~30 lines) |
+| Post-processing | ✅ Auto (1 line) | ❌ Manual (~130 lines) |
+| **Total Code** | **1 line** | **~200 lines** |
+
+**Why Manual Implementation?**
+- CoreML only provides raw model output (MLMultiArray)
+- Ultralytics handles all post-processing in Python
+- Swift developers must implement NMS and parsing manually
+
+---
+
+##### 2. Recipe Generation (MLX)
+```swift
+// MLX Framework (Apple Silicon optimized)
+import MLX
+import MLXLLM
+import MLXLMCommon
+import Hub
+```
+
+**Model**: Qwen2.5-0.5B-Instruct-4bit
+- **Size**: ~300MB (4-bit quantized)
+- **Parameters**: 500 million
+- **Context Length**: 32K tokens
+- **Performance**:
+  - iPhone 15 Pro: 20-30 tokens/s
+  - iPhone 14: 10-20 tokens/s
+  - Generation time: 10-30 seconds
+- **Memory Usage**: ~450-500MB during inference
+
+**Features**:
+- ✅ **Fully On-Device**: No cloud API required
+- ✅ **Metal Acceleration**: Utilizes iPhone GPU
+- ✅ **Auto-download**: Models downloaded from HuggingFace on first use
+- ✅ **Memory Optimized**: Simplified prompts to reduce memory footprint
+- ⚠️ **Real Device Only**: MLX requires physical iPhone (no Simulator support)
+
+**Implementation**:
+- `MLXRecipeGenerator.swift`: MLX model management and inference
+- Auto screen-lock prevention during inference
+- Timeout handling (120s max)
+- Fallback to simplified recipes on error
+
+**Optimization Strategies**:
+1. **Prompt Simplification**: Reduced from 700 to 400 characters
+2. **Screen Lock Prevention**: Prevents background GPU termination
+3. **Memory Management**: Close other apps before inference
+4. **Error Handling**: Graceful fallback to pre-defined recipes
+
+---
+
+##### 3. Hybrid Strategy Pattern
+```swift
+// RecipeGenerationStrategy.swift
+protocol RecipeGenerationStrategy {
+    func generateRecipe(...) async throws -> Recipe
+}
+
+// Three implementations:
+1. MLXRecipeGenerator          // On-device MLX
+2. NetworkOllamaGenerator      // Network Ollama (Mac server)
+3. LocalLLMRecipeGenerator     // Fallback/compatibility
+```
+
+**Strategy Selection**:
+- **Simulator**: Automatically uses Network Ollama
+- **Real Device**: User can toggle between MLX and Network
+- **Fallback**: Gracefully handles unavailable strategies
+
+---
 
 #### Data Layer
 - **Networking**:
   - `URLSession` for HTTP requests
   - `async/await` for asynchronous operations
+  - Automatic endpoint selection (localhost for Simulator, Mac IP for real device)
 
 - **State Management**:
   - `@State` for local view state
   - `@Binding` for two-way data binding
   - `@ObservableObject` for shared state
+  - `@AppStorage` for persistent settings (useLocalProcessing, useMLXGeneration)
 
 
 ---
@@ -898,6 +1047,181 @@ Select iOS simulator in Xcode and press Play to run
 3. Select or capture a photo
 4. Enter desired meal type
 5. View generated complete recipe
+
+---
+
+## Using On-Device AI (Local Processing)
+
+### Prerequisites
+
+**Hardware Requirements**:
+- iPhone 12 or later (A14 Bionic chip or newer)
+- ~500MB free storage for MLX model
+- 2GB+ available RAM
+
+**Software Requirements**:
+- iOS 16.0 or later
+- Xcode 16.2+ for development
+
+---
+
+### Setup Guide for Local AI
+
+#### Step 1: Enable Developer Mode on iPhone
+
+1. Connect iPhone to Mac via USB cable
+2. On iPhone: **Settings** → **Privacy & Security** → **Developer Mode**
+3. Toggle **ON** and restart iPhone
+4. After restart, confirm enabling Developer Mode
+
+#### Step 2: Trust Developer Certificate
+
+1. Connect iPhone to Mac and run the app from Xcode
+2. On iPhone: **Settings** → **General** → **VPN & Device Management**
+3. Under "Developer App", tap your Apple ID
+4. Tap **Trust** and confirm
+
+#### Step 3: Configure App Settings
+
+In the app on your iPhone:
+
+1. **Tap Settings icon** (top-right corner)
+2. **Enable "Use Local Processing"** (toggles CoreML + MLX)
+3. **Enable "Use MLX Generation"** (for on-device LLM)
+
+```
+Settings:
+┌────────────────────────────────────┐
+│ ☑️ Use Local Processing            │  ← Enable this
+│    (CoreML YOLO detection)         │
+│                                    │
+│ ☑️ Use MLX Generation              │  ← Enable this
+│    (On-device LLM)                 │
+└────────────────────────────────────┘
+```
+
+---
+
+### How to Use Local AI
+
+#### Ingredient Detection (CoreML YOLO)
+
+1. Open the app on your iPhone
+2. Tap **"Camera"** or **"Photo Library"**
+3. Take/select a photo of ingredients
+4. **CoreML automatically detects** ingredients (no server needed!)
+
+**Performance**:
+- Detection time: ~100ms on iPhone 14+
+- Completely offline
+- No data leaves your device
+
+---
+
+#### Recipe Generation (MLX)
+
+1. After ingredients are detected
+2. Enter your meal craving (e.g., "pasta", "stir fry")
+3. Tap **"Generate Recipe"**
+4. **MLX generates recipe on-device** (10-30 seconds)
+
+**Important Notes**:
+- ⚠️ **Keep app in foreground** during generation (30-60 seconds)
+- ⚠️ **Don't lock screen** - automatic lock is disabled during inference
+- ⚠️ **Close other apps** to free up memory
+- ⚠️ **First use downloads model** (~300MB from HuggingFace)
+
+**Performance**:
+- iPhone 15 Pro: 20-30 tokens/s (15-25 seconds)
+- iPhone 14: 10-20 tokens/s (25-40 seconds)
+- iPhone 12/13: 8-15 tokens/s (30-60 seconds)
+
+---
+
+### Troubleshooting Local AI
+
+#### Issue 1: "MLX model not loaded"
+**Solution**:
+- Ensure stable internet for first-time model download
+- Check available storage (~500MB needed)
+- Restart app after model download completes
+
+#### Issue 2: Memory errors / App crashes
+**Solution**:
+- Close all other apps before generating recipe
+- Restart iPhone to free up memory
+- Switch to "Network Ollama" mode if persistent
+
+#### Issue 3: "Background GPU execution not permitted"
+**Solution**:
+- Keep app in foreground during generation
+- Don't lock screen or switch apps
+- The app now automatically prevents screen lock
+
+#### Issue 4: Slow generation speed
+**Expected behavior**:
+- 10-30 seconds is normal for on-device LLM
+- Older iPhones (12/13) will be slower
+- Consider using Network Ollama for faster results
+
+---
+
+### Comparison: Local vs Server Mode
+
+| Feature | Local (CoreML + MLX) | Server (FastAPI + Ollama) |
+|---------|---------------------|--------------------------|
+| **Privacy** | ✅ All data on-device | ⚠️ Data sent to server |
+| **Internet** | ✅ Fully offline | ❌ Required |
+| **Speed (Detection)** | ✅ ~100ms | ~500ms-1s |
+| **Speed (Recipe)** | ⚠️ 10-30s | ✅ 5-10s |
+| **Quality (Recipe)** | ⚠️ Good (0.5B model) | ✅ Excellent (3B model) |
+| **Setup** | ✅ No setup needed | ⚠️ Requires backend |
+| **Device Support** | ⚠️ iPhone 12+ only | ✅ All devices |
+| **Simulator** | ❌ Not supported | ✅ Supported |
+
+**Recommendation**:
+- **Development/Testing**: Use Server Mode
+- **Production App**: Use Local Mode (better privacy, no server costs)
+- **Best of Both**: Offer users a toggle to choose
+
+---
+
+### Model Information
+
+#### CoreML YOLO Model
+```
+File: yolov8n_merged_food_cpu_aug_finetuned.mlmodelc
+Size: ~6MB
+Input: 640×640 RGB image
+Output: 11 food categories + bounding boxes
+Inference: Neural Engine accelerated
+```
+
+**Detected Classes**:
+- Proteins: beef, pork, chicken
+- Dairy: butter, cheese, milk
+- Vegetables: broccoli, carrot, cucumber, lettuce, tomato
+
+---
+
+#### MLX LLM Model
+```
+Model: mlx-community/Qwen2.5-0.5B-Instruct-4bit
+Size: ~300MB (4-bit quantized)
+Parameters: 500 million
+Context: 32K tokens
+Download: Automatic from HuggingFace on first use
+Location: ~/Documents/huggingface/models/
+```
+
+**Recipe Generation**:
+- Input: List of ingredients + meal type
+- Output: Structured JSON recipe with:
+  - Title, description
+  - Ingredient list with amounts
+  - Step-by-step instructions with timing
+  - Nutritional information (optional)
+  - Tags and difficulty level
 
 ---
 

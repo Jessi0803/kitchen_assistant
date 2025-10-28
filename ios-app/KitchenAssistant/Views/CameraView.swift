@@ -151,6 +151,13 @@ struct CameraView: View {
         isLoading = true
         errorMessage = nil
 
+        // 防止 MLX 推理時自動鎖屏（避免後台 GPU 錯誤）
+        let wasIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
+        if useMLXGeneration {
+            UIApplication.shared.isIdleTimerDisabled = true
+            print("🔒 已禁用自動鎖屏（MLX 需要保持前台運行）")
+        }
+
         Task {
             do {
                 let recipe: Recipe
@@ -195,12 +202,18 @@ struct CameraView: View {
                 await MainActor.run {
                     self.generatedRecipe = recipe
                     self.isLoading = false
+                    // 恢復原本的自動鎖屏設定
+                    UIApplication.shared.isIdleTimerDisabled = wasIdleTimerDisabled
+                    print("🔓 已恢復自動鎖屏設定")
                 }
             } catch {
                 let errorDescription = error.localizedDescription
                 await MainActor.run {
                     self.isLoading = false
                     self.errorMessage = "Recipe generation failed: \(errorDescription)"
+                    // 即使出錯也要恢復設定
+                    UIApplication.shared.isIdleTimerDisabled = wasIdleTimerDisabled
+                    print("🔓 已恢復自動鎖屏設定")
                 }
                 print("Error generating recipe: \(error)")
             }

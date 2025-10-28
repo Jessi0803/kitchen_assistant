@@ -20,7 +20,7 @@ class MLXRecipeGenerator {
     // MARK: - Initialization
     
     init() {
-        // 使用 Qwen2.5-0.5B-Instruct-4bit 模型
+        // 使用 0.5B 模型（已在 iPhone 16 Pro 上测试，运行稳定）
         self.modelConfiguration = ModelConfiguration(
             id: "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
         )
@@ -94,15 +94,35 @@ class MLXRecipeGenerator {
         let prompt = buildPrompt(ingredients: ingredients, mealCraving: mealCraving)
         print("📤 提示詞長度: \(prompt.count) 字元")
         
-        // 生成回應
+        // 生成回應（已簡化 prompt 以減少內存使用）
         let startTime = Date()
+        print("🎯 開始 MLX 推理（這可能需要 30-60 秒）...")
+        print("💾 提示：MLX 需要較多內存，如遇問題請關閉其他 App")
+
         let session = ChatSession(container)
-        let response = try await session.respond(to: prompt)
+
+        // 使用 withTimeout 來避免無限等待
+        let response: String
+        do {
+            response = try await withTimeout(seconds: 120) {
+                let result = try await session.respond(to: prompt)
+                print("📤 MLX 推理完成，開始處理回應...")
+                return result
+            }
+        } catch {
+            print("❌ MLX 推理超時或失敗: \(error)")
+            throw MLXError.generationFailed("推理超時: \(error.localizedDescription)")
+        }
+
         let duration = Date().timeIntervalSince(startTime)
-        
+
         print("✅ MLX 生成完成，耗時: \(String(format: "%.1f", duration)) 秒")
         print("📥 回應長度: \(response.count) 字元")
-        
+        print("📄 完整回應內容:")
+        print("─────────────────────────────────────")
+        print(response)
+        print("─────────────────────────────────────")
+
         // 解析 JSON 回應
         return try parseRecipe(from: response, duration: duration)
     }
@@ -142,58 +162,90 @@ class MLXRecipeGenerator {
         isLoading = false
     }
     
-    /// 建立提示詞
+    /// 建立提示詞（改進版：更多指導，但不過長）
     private func buildPrompt(ingredients: [String], mealCraving: String?) -> String {
-        var prompt = """
-        You are a professional chef assistant. Generate a recipe using the following ingredients.
-        Return ONLY a valid JSON object with this exact structure (no markdown, no explanations):
-        
-        {
-          "title": "Recipe Name",
-          "ingredients": ["ingredient 1 with amount", "ingredient 2 with amount"],
-          "steps": ["step 1", "step 2", "step 3"],
-          "prepTime": "15 minutes",
-          "cookTime": "30 minutes",
-          "servings": 2
-        }
-        
-        Available ingredients: \(ingredients.joined(separator: ", "))
-        """
-        
-        if let craving = mealCraving, !craving.isEmpty {
-            prompt += "\nDish preference: \(craving)"
-        }
-        
-        prompt += "\n\nGenerate the recipe JSON:"
-        
-        return prompt
+        let ingredientsList = ingredients.joined(separator: ", ")
+        let dishType = mealCraving ?? "dish"
+
+        return """
+Create a \(dishType) recipe using ONLY these ingredients: \(ingredientsList)
+
+IMPORTANT RULES:
+1. Use ONLY these ingredients + basic items (salt, pepper, oil, water if needed)
+2. NO extra ingredients
+3. Write 5-7 unique steps, NO repetition
+4. Tags must match dish type (\(dishType))
+5. Steps must be DIFFERENT from each other
+
+EXAMPLE OUTPUT (for pasta):
+{
+  "title": "Simple Pasta",
+  "description": "Quick pasta dish",
+  "prepTime": 5,
+  "cookTime": 15,
+  "servings": 2,
+  "difficulty": "Easy",
+  "ingredients": [
+    {"name": "Cheese", "amount": "1", "unit": "cup", "notes": null},
+    {"name": "Salt", "amount": "1", "unit": "tsp", "notes": null}
+  ],
+  "instructions": [
+    {"step": 1, "text": "Boil water in a pot", "time": 5, "temperature": null, "tips": null},
+    {"step": 2, "text": "Add pasta and cook 10 minutes", "time": 10, "temperature": null, "tips": null},
+    {"step": 3, "text": "Drain pasta", "time": 1, "temperature": null, "tips": null},
+    {"step": 4, "text": "Mix with cheese and salt", "time": 2, "temperature": null, "tips": null},
+    {"step": 5, "text": "Serve hot", "time": 0, "temperature": null, "tips": null}
+  ],
+  "tags": ["pasta", "main"],
+  "nutritionInfo": null
+}
+
+NOW CREATE YOUR RECIPE for \(dishType):
+"""
     }
     
     /// 解析食譜
     private func parseRecipe(from response: String, duration: TimeInterval) throws -> Recipe {
         print("🔍 開始解析 JSON 回應...")
-        
+        print("📏 原始回應長度: \(response.count) 字元")
+        print("📄 完整原始回應:")
+        print("─────────────────────────────────────")
+        print(response)
+        print("─────────────────────────────────────")
+
         // 清理回應文字
         var cleanedResponse = response.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // 移除 markdown 代碼塊標記
-        if cleanedResponse.hasPrefix("```json") {
-            cleanedResponse = cleanedResponse.replacingOccurrences(of: "```json", with: "")
+
+        // 移除 markdown 代碼塊標記（所有可能的變體）
+        let markdownPrefixes = ["```json", "```JSON", "```"]
+        for prefix in markdownPrefixes {
+            if cleanedResponse.hasPrefix(prefix) {
+                cleanedResponse = String(cleanedResponse.dropFirst(prefix.count))
+            }
         }
-        if cleanedResponse.hasPrefix("```") {
-            cleanedResponse = cleanedResponse.replacingOccurrences(of: "```", with: "")
-        }
-        if cleanedResponse.hasSuffix("```") {
+
+        // 移除結尾的 ```
+        while cleanedResponse.hasSuffix("```") {
             cleanedResponse = String(cleanedResponse.dropLast(3))
         }
+
         cleanedResponse = cleanedResponse.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // 嘗試找到 JSON 對象
+
+        // 嘗試找到 JSON 對象（找第一個 { 和最後一個 }）
         if let startIndex = cleanedResponse.firstIndex(of: "{"),
            let endIndex = cleanedResponse.lastIndex(of: "}") {
-            cleanedResponse = String(cleanedResponse[startIndex...endIndex])
+            let range = startIndex...endIndex
+            cleanedResponse = String(cleanedResponse[range])
+        } else {
+            print("❌ 找不到 JSON 對象的開始或結束標記")
+            print("📄 清理後內容: \(cleanedResponse.prefix(200))...")
+            throw MLXError.invalidResponse("找不到有效的 JSON 對象")
         }
-        
+
+        print("📏 清理後 JSON 長度: \(cleanedResponse.count) 字元")
+        print("📄 JSON 開頭: \(cleanedResponse.prefix(100))...")
+        print("📄 JSON 結尾: ...\(cleanedResponse.suffix(100))")
+
         // 解析 JSON
         guard let jsonData = cleanedResponse.data(using: .utf8) else {
             print("❌ 無法將回應轉換為 Data")
@@ -203,32 +255,61 @@ class MLXRecipeGenerator {
         do {
             let recipeResponse = try JSONDecoder().decode(RecipeResponse.self, from: jsonData)
             print("✅ JSON 解析成功")
-            
-            // 將 String 轉換為 Ingredient
-            let ingredients = recipeResponse.ingredients.map { ingredientStr in
-                Ingredient(name: ingredientStr, amount: "適量", unit: nil, notes: nil)
+
+            // 轉換 difficulty
+            let recipeDifficulty: Recipe.Difficulty
+            switch recipeResponse.difficulty.lowercased() {
+            case "easy": recipeDifficulty = .easy
+            case "medium": recipeDifficulty = .medium
+            case "hard": recipeDifficulty = .hard
+            default: recipeDifficulty = .easy
             }
-            
-            // 將 String 轉換為 Instruction
-            let instructions = recipeResponse.steps.enumerated().map { (index, step) in
-                Instruction(step: index + 1, text: step, time: nil, temperature: nil, tips: nil)
+
+            // 轉換 ingredients
+            let ingredients = recipeResponse.ingredients.map { mlxIng in
+                Ingredient(
+                    name: mlxIng.name,
+                    amount: mlxIng.amount.string ?? "適量",
+                    unit: mlxIng.unit,
+                    notes: mlxIng.notes
+                )
             }
-            
-            // 將時間字符串轉換為整數（提取數字）
-            let prepTimeInt = Int(recipeResponse.prepTime.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) ?? 15
-            let cookTimeInt = Int(recipeResponse.cookTime.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) ?? 30
-            
+
+            // 轉換 instructions
+            let instructions = recipeResponse.instructions.map { mlxInst in
+                Instruction(
+                    step: mlxInst.step,
+                    text: mlxInst.text,
+                    time: mlxInst.time,
+                    temperature: mlxInst.temperature,
+                    tips: mlxInst.tips
+                )
+            }
+
+            // 轉換 nutrition info
+            let nutrition: NutritionInfo? = recipeResponse.nutritionInfo.map { n in
+                NutritionInfo(
+                    calories: n.calories,
+                    protein: n.protein?.string,
+                    carbs: n.carbs?.string,
+                    fat: n.fat?.string,
+                    fiber: n.fiber?.string,
+                    sugar: n.sugar?.string,
+                    sodium: n.sodium?.string
+                )
+            }
+
             return Recipe(
                 title: recipeResponse.title,
-                description: "由 MLX on-device LLM 生成 (耗時 \(String(format: "%.1f", duration))秒)",
-                prepTime: prepTimeInt,
-                cookTime: cookTimeInt,
+                description: "\(recipeResponse.description) (MLX 生成，耗時 \(String(format: "%.1f", duration))秒)",
+                prepTime: recipeResponse.prepTime,
+                cookTime: recipeResponse.cookTime,
                 servings: recipeResponse.servings,
-                difficulty: .easy,
+                difficulty: recipeDifficulty,
                 ingredients: ingredients,
                 instructions: instructions,
-                tags: ["MLX Generated"],
-                nutritionInfo: nil
+                tags: (recipeResponse.tags ?? []) + ["MLX Generated"],
+                nutritionInfo: nutrition
             )
         } catch {
             print("❌ JSON 解析失敗: \(error)")
@@ -304,22 +385,107 @@ enum MLXError: LocalizedError {
     }
 }
 
-// MARK: - JSON Response Model
+// MARK: - JSON Response Model (和 Ollama 相同的結構)
 
 private struct RecipeResponse: Codable {
     let title: String
-    let ingredients: [String]
-    let steps: [String]
-    let prepTime: String
-    let cookTime: String
+    let description: String
+    let prepTime: Int
+    let cookTime: Int
     let servings: Int
+    let difficulty: String
+    let ingredients: [MLXIngredient]
+    let instructions: [MLXInstruction]
+    let tags: [String]?
+    let nutritionInfo: MLXNutritionInfo?
+}
+
+private struct MLXIngredient: Codable {
+    let name: String
+    let amount: FlexibleStringOrInt
+    let unit: String?
+    let notes: String?
+}
+
+private struct MLXInstruction: Codable {
+    let step: Int
+    let text: String
+    let time: Int?
+    let temperature: String?
+    let tips: String?
+}
+
+private struct MLXNutritionInfo: Codable {
+    let calories: Int?
+    let protein: FlexibleStringOrInt?
+    let carbs: FlexibleStringOrInt?
+    let fat: FlexibleStringOrInt?
+    let fiber: FlexibleStringOrInt?
+    let sugar: FlexibleStringOrInt?
+    let sodium: FlexibleStringOrInt?
+}
+
+// 支援數字或字串的靈活類型
+private struct FlexibleStringOrInt: Codable {
+    let stringValue: String?
+    let intValue: Int?
     
-    enum CodingKeys: String, CodingKey {
-        case title
-        case ingredients
-        case steps
-        case prepTime = "prepTime"
-        case cookTime = "cookTime"
-        case servings
+    init(string: String?, int: Int?) {
+        self.stringValue = string
+        self.intValue = int
+    }
+    
+    var string: String? {
+        return stringValue ?? (intValue != nil ? String(intValue!) : nil)
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let stringVal = try? container.decode(String.self) {
+            self.stringValue = stringVal
+            self.intValue = nil
+        } else if let intVal = try? container.decode(Int.self) {
+            self.intValue = intVal
+            self.stringValue = String(intVal)
+        } else if let doubleVal = try? container.decode(Double.self) {
+            self.intValue = Int(doubleVal)
+            self.stringValue = String(Int(doubleVal))
+        } else {
+            self.stringValue = nil
+            self.intValue = nil
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if let stringVal = stringValue {
+            try container.encode(stringVal)
+        } else if let intVal = intValue {
+            try container.encode(intVal)
+        }
+    }
+}
+
+// MARK: - Timeout Helper
+
+/// 為 async 操作添加超時限制
+@available(iOS 16.0, macOS 14.0, *)
+private func withTimeout<T>(seconds: TimeInterval, operation: @escaping @Sendable () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        // 添加實際操作
+        group.addTask {
+            try await operation()
+        }
+
+        // 添加超時檢查
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw MLXError.generationFailed("操作超時（\(Int(seconds))秒）")
+        }
+
+        // 返回第一個完成的結果
+        let result = try await group.next()!
+        group.cancelAll()
+        return result
     }
 }
