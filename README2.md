@@ -44,24 +44,9 @@ iOS SwiftUI App (Standalone)
         └─ Qwen2.5-0.5B-Instruct-4bit
 ```
 
-**Features**:
-- ✅ **Fully Offline**: No internet or server required
-- ✅ **Privacy-First**: All data stays on device
-- ✅ **Fast Inference**: Utilizes iPhone Neural Engine
-- ✅ **Zero Cost**: No server/API fees
-- ✅ **App Store Ready**: Self-contained deployment
-
-**Requirements**:
-- iPhone 12 or later (A14 Bionic+)
-- iOS 16.0+
-- ~500MB available storage
-
 ---
 
 ### Extended System Architecture
-```
-iOS App → FastAPI Backend → YOLO (Ingredient Detection) → Qwen2.5:3b (Recipe Generation) → Recipe JSON
-```
 
 ### Complete Frontend-Backend Architecture Diagram
 ![App Architecture](image.png)
