@@ -191,12 +191,24 @@ struct CameraView: View {
                         )
                     }
                 } else {
-                    // 使用 Server LLM 生成食譜
-                    print("🌐 Using server LLM for recipe generation")
-                    recipe = try await apiClient.generateRecipe(
-                        ingredients: detectedIngredients,
-                        mealCraving: mealCraving
-                    )
+                    // Cloud Server Mode: Detection via AWS, Generation via MLX on-device
+                    // (Docker backend only provides detection service, recipe generation uses on-device MLX)
+                    print("🌐🤖 Cloud mode: Using MLX on-device for recipe generation")
+                    if #available(iOS 16.0, *) {
+                        if mlxGenerator == nil {
+                            mlxGenerator = MLXRecipeGenerator()
+                        }
+                        recipe = try await mlxGenerator!.generateRecipe(
+                            ingredients: detectedIngredients,
+                            mealCraving: mealCraving
+                        )
+                    } else {
+                        throw NSError(
+                            domain: "MLXError",
+                            code: -1,
+                            userInfo: [NSLocalizedDescriptionKey: "Cloud mode requires iOS 16.0+ for on-device recipe generation"]
+                        )
+                    }
                 }
 
                 await MainActor.run {

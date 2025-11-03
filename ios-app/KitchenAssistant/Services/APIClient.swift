@@ -2,12 +2,20 @@ import Foundation
 import UIKit
 
 class APIClient: ObservableObject {
-    // 自動偵測：Simulator 用 localhost，真機用 Mac IP
+    // Server endpoints configuration
+    private struct ServerConfig {
+        static let awsEC2 = "http://18.188.20.164:8000"  // AWS EC2 (Production)
+        static let localMac = "http://192.168.86.27:8000"  // Local Mac (Development)
+        static let localhost = "http://127.0.0.1:8000"    // Simulator
+    }
+
+    // 自動選擇服務器：優先使用 AWS EC2 (Cloud Mode)
     private let baseURL: String = {
         #if targetEnvironment(simulator)
-        return "http://127.0.0.1:8000"  // Simulator: 使用 localhost
+        return ServerConfig.localhost  // Simulator: 使用 localhost
         #else
-        return "http://192.168.86.27:8000"  // 真機: 使用 Mac 的 IP 地址
+        // Real device: 使用 AWS EC2 (Cloud Mode)
+        return ServerConfig.awsEC2
         #endif
     }()
 

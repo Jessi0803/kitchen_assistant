@@ -1,0 +1,58 @@
+# Docker ignore file - exclude unnecessary files from Docker build context
+
+# Python virtual environments
+fresh_venv/
+yolo_venv_310/
+venv/
+env/
+ENV/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Training results and datasets (too large)
+kitchen_assistant_training_cpu_aug/
+datasets/
+runs/
+*.pt.tmp
+*.onnx
+
+# Keep only the final model
+!best.pt
+!yolov8n_merged_food_cpu_aug_finetuned.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+
+# Documentation
+README.md
+*.md
+
+# Scripts (not needed in container)
+fine_tune_yolo.py
+fine_tune_yolo_cpu_aug.py
+export_coreml.py
+export_onnx.py
+
+# Original requirements (using requirements-docker.txt instead)
+requirements.txt

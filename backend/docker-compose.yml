@@ -1,0 +1,36 @@
+# Docker Compose configuration for Kitchen Assistant Backend
+# Simplified version for YOLO Detection Service only
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kitchen-assistant-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount current directory for development (optional, comment out for production)
+      - ./main-docker.py:/app/main.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 900M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+# Note: Ollama service is NOT included
+# Recipe generation will be handled by iOS MLX on-device

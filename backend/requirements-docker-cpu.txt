@@ -1,0 +1,25 @@
+# PyTorch CPU-only (use extra-index-url to add PyTorch repo alongside PyPI)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
+torchvision==0.16.0+cpu
+
+# NumPy - MUST be 1.x for PyTorch 2.1.0 compatibility
+numpy<2.0
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Image Processing
+Pillow==10.1.0
+
+# Data Validation
+pydantic==2.5.0
+
+# YOLO Dependencies (lightweight)
+ultralytics==8.3.203
+
+# Utilities
+PyYAML==6.0.1
+requests==2.32.5

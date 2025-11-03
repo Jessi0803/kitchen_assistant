@@ -117,34 +117,34 @@ struct SettingsView: View {
                         
                         if useMLXGeneration {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("🤖 MLX On-Device Mode")
+                                Text("📱 Offline Mode (推薦)")
                                     .font(.caption)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.green)
-                                Text("• 100% offline, model runs on your device")
+                                Text("• Detection & Generation: On-device")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
-                                Text("• Slower but completely private")
+                                Text("• 100% offline, completely private")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
-                                Text("• Requires iPhone 12+ or M1+ Mac")
+                                Text("• Requires iOS 16+ (iPhone 12+)")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
                             .padding(.vertical, 4)
                         } else {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("🔧 Ollama API Mode")
+                                Text("🔧 Developer Mode")
                                     .font(.caption)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.orange)
-                                Text("• Connects to local Ollama service")
+                                Text("• Detection: On-device, Generation: Ollama")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
-                                Text("• Faster generation (localhost:11434)")
+                                Text("• Requires Ollama server on Mac")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
-                                Text("• Requires Ollama running on Mac")
+                                Text("• For development & testing")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
@@ -152,17 +152,20 @@ struct SettingsView: View {
                         }
                     } else {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("🌐 Cloud Server Mode")
+                            Text("☁️ Cloud Mode (推薦)")
                                 .font(.caption)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.blue)
-                            Text("• Connects to remote API server")
+                            Text("• Detection: AWS Server")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text("• Generation: On-device MLX")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                             Text("• Requires internet connection")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
-                            Text("• Works on any device")
+                            Text("• Hybrid cloud-edge architecture")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }

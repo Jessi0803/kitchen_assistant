@@ -1,0 +1,22 @@
+# Lightweight requirements for Docker deployment (YOLO Detection Service only)
+# Excludes Ollama and heavy dependencies to fit AWS t2.micro (1GB RAM)
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Image Processing
+Pillow==10.1.0
+
+# Data Validation
+pydantic==2.5.0
+
+# YOLO Dependencies (CPU-optimized versions)
+ultralytics==8.3.203
+torch==2.1.0
+torchvision==0.16.0
+
+# Utilities
+PyYAML==6.0.1
+requests==2.32.5

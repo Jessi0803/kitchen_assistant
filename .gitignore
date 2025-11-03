@@ -42,4 +42,4 @@ llama-cpp-repo/
 .idea/
 
 # Logs
-*.log
+*.logawss.pem
