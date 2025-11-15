@@ -1,0 +1,176 @@
+name: iOS CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'ios-app/**'
+      - '.github/workflows/ios-ci-cd.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ios-app/**'
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  XCODE_VERSION: '15.1'
+  SCHEME: 'KitchenAssistant'
+  WORKSPACE: 'ios-app/KitchenAssistant.xcworkspace'
+  CONFIGURATION: 'Release'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: macos-13
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+      
+      - name: Show Xcode version
+        run: xcodebuild -version
+      
+      - name: Install CocoaPods
+        working-directory: ios-app
+        run: |
+          pod --version
+          pod install --repo-update
+      
+      - name: Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: ios-app/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios-app/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+      
+      - name: Build for testing
+        working-directory: ios-app
+        run: |
+          xcodebuild clean build-for-testing \
+            -workspace "${{ env.WORKSPACE }}" \
+            -scheme "${{ env.SCHEME }}" \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.0' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+      
+      - name: Run unit tests
+        working-directory: ios-app
+        run: |
+          xcodebuild test-without-building \
+            -workspace "${{ env.WORKSPACE }}" \
+            -scheme "${{ env.SCHEME }}" \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.0' \
+            -resultBundlePath TestResults \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+      
+      - name: Run UI tests
+        working-directory: ios-app
+        continue-on-error: true  # UI tests may fail in CI environment
+        run: |
+          xcodebuild test \
+            -workspace "${{ env.WORKSPACE }}" \
+            -scheme "${{ env.SCHEME }}" \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.0' \
+            -only-testing:KitchenAssistantUITests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: ios-app/TestResults
+      
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-logs
+          path: ~/Library/Logs/DiagnosticReports
+
+  archive-and-upload:
+    name: Archive and Upload to TestFlight
+    needs: build-and-test
+    runs-on: macos-13
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+      
+      - name: Install CocoaPods
+        working-directory: ios-app
+        run: pod install --repo-update
+      
+      - name: Import certificates
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
+          p12-password: ${{ secrets.CERTIFICATES_PASSWORD }}
+      
+      - name: Download provisioning profiles
+        uses: apple-actions/download-provisioning-profiles@v1
+        with:
+          bundle-identifier: 'com.yourcompany.kitchenassistant'
+          profile-type: 'IOS_APP_STORE'
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      
+      - name: Increment build number
+        working-directory: ios-app
+        run: |
+          BUILD_NUMBER=$(($(date +%s)/100))
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" KitchenAssistant/Info.plist
+          echo "Build number set to: $BUILD_NUMBER"
+      
+      - name: Archive app
+        working-directory: ios-app
+        run: |
+          xcodebuild archive \
+            -workspace "${{ env.WORKSPACE }}" \
+            -scheme "${{ env.SCHEME }}" \
+            -configuration "${{ env.CONFIGURATION }}" \
+            -archivePath "$PWD/build/KitchenAssistant.xcarchive" \
+            -destination 'generic/platform=iOS' \
+            DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM_ID }}"
+      
+      - name: Export IPA
+        working-directory: ios-app
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/build/KitchenAssistant.xcarchive" \
+            -exportPath "$PWD/build" \
+            -exportOptionsPlist ExportOptions.plist
+      
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@v1
+        with:
+          app-path: 'ios-app/build/KitchenAssistant.ipa'
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: KitchenAssistant-IPA
+          path: ios-app/build/KitchenAssistant.ipa
+      
+      - name: Notify upload success
+        if: success()
+        run: |
+          echo "✅ Successfully uploaded to TestFlight!"
+          echo "Build is now processing in App Store Connect"
+

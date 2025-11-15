@@ -382,29 +382,6 @@ xcode-select --install
 iPhone 15 Pro simulator (iOS 17.0+)
 ```
 
----
-
-### Performance Benchmarks
-
-#### Inference Performance (M3 MacBook Air, 16GB RAM)
-
-| Component | Operation | Time | Hardware Utilization |
-|-----------|-----------|------|---------------------|
-| **YOLO Detection** | Image → Ingredients | 0.5-1.0 sec | CPU (8 cores) |
-| **LLM Generation** | Prompt → Recipe JSON | 15-30 sec | GPU (Metal) @ 40-60 tokens/s |
-| **Network Latency** | HTTP (localhost) | 0.05-0.1 sec | N/A |
-| **JSON Processing** | Parse/Encode | <0.1 sec | CPU |
-| **UI Rendering** | SwiftUI Updates | <0.1 sec | GPU (SwiftUI) |
-| **Total E2E** | Photo → Full Recipe | **16-32 sec** | Mixed CPU/GPU |
-
-#### Resource Usage
-- **Memory (Backend)**: ~1.5 GB (with Qwen2.5:3b loaded)
-- **Memory (iOS App)**: ~100-200 MB
-- **Model Sizes**:
-  - YOLOv8n fine-tuned: ~6 MB
-  - Qwen2.5:3b: 1.9 GB
-
----
 
 ## Finetuning YOLOv8n (CPU)
 
@@ -1121,35 +1098,6 @@ Settings:
 - iPhone 14: 10-20 tokens/s (25-40 seconds)
 - iPhone 12/13: 8-15 tokens/s (30-60 seconds)
 
----
-
-### Troubleshooting Local AI
-
-#### Issue 1: "MLX model not loaded"
-**Solution**:
-- Ensure stable internet for first-time model download
-- Check available storage (~500MB needed)
-- Restart app after model download completes
-
-#### Issue 2: Memory errors / App crashes
-**Solution**:
-- Close all other apps before generating recipe
-- Restart iPhone to free up memory
-- Switch to "Network Ollama" mode if persistent
-
-#### Issue 3: "Background GPU execution not permitted"
-**Solution**:
-- Keep app in foreground during generation
-- Don't lock screen or switch apps
-- The app now automatically prevents screen lock
-
-#### Issue 4: Slow generation speed
-**Expected behavior**:
-- 10-30 seconds is normal for on-device LLM
-- Older iPhones (12/13) will be slower
-- Consider using Network Ollama for faster results
-
----
 
 ### Comparison: Local vs Server Mode
 
@@ -1207,56 +1155,6 @@ Location: ~/Documents/huggingface/models/
   - Step-by-step instructions with timing
   - Nutritional information (optional)
   - Tags and difficulty level
-
----
-
-
----
-
-## Advanced Settings
-
-### Adjusting LLM Parameters
-
-In `main.py`'s `generate_recipe_with_llm()` function:
-
-```python
-response = ollama.chat(
-    model='qwen2.5:3b',
-    messages=[...],
-    options={
-        'temperature': 0.7,     # Creativity (0.0-1.0)
-        'num_predict': 2048,    # Maximum generation length
-        'top_p': 0.9,           # Sampling threshold
-        'top_k': 40,            # Number of candidates
-    }
-)
-```
-
-**Parameter Explanation**:
-
-- **temperature** (0.7): Higher values = more creative, but possibly unreasonable
-  - 0.3-0.5: Conservative, practical
-  - 0.7-0.9: Balanced
-  - 0.9-1.0: Creative, adventurous
-
-- **num_predict** (2048): Maximum number of tokens to generate
-  - 1024: Brief recipes
-  - 2048: Detailed recipes (recommended)
-  - 4096: Very detailed (slower)
-
----
-
-## Upgrading to Larger Models
-
-### Option 1: Qwen2.5:7b (Higher Quality)
-
-```bash
-# Download 7b model (~4.7 GB)
-ollama pull qwen2.5:7b
-
-# Modify main.py
-model='qwen2.5:7b'  # Originally 'qwen2.5:3b'
-```
 
 
 
