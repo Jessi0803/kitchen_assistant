@@ -18,13 +18,11 @@ pydantic==2.5.3
 # NumPy with version constraint (for compatibility)
 numpy>=1.24.0,<2.0.0
 
-# Torch (CPU only for CI)
---index-url https://download.pytorch.org/whl/cpu
-torch==2.1.2+cpu
-torchvision==0.16.2+cpu
-
 # YOLO (without full dependencies)
 ultralytics==8.1.0
+
+# Torch (CPU only for CI) - Install separately with extra index
+# Note: These will be installed via workflow with --extra-index-url
 
 # Optional: Mock Ollama for testing
 # (We'll skip Ollama tests in CI)
