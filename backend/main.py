@@ -9,8 +9,15 @@ import os
 from PIL import Image
 from ultralytics import YOLO
 import torch
-import ollama
 import json
+
+# Try to import ollama, but don't fail if it's not available (for CI/testing)
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+    print("⚠️ Ollama not available - recipe generation will be disabled")
 
 app = FastAPI(
     title="Kitchen Assistant API",
@@ -140,7 +147,12 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": time.time()}
+    return {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "yolo_loaded": yolo_model is not None,
+        "ollama_available": OLLAMA_AVAILABLE
+    }
 
 @app.post("/api/detect", response_model=DetectionResponse)
 async def detect_ingredients(image: UploadFile = File(...)):
@@ -227,6 +239,13 @@ async def generate_recipe_with_llm(request: RecipeRequest) -> Recipe:
     """
     Generate recipe using Qwen2.5:3b LLM via Ollama.
     """
+    # Check if Ollama is available
+    if not OLLAMA_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Recipe generation service unavailable (Ollama not installed)"
+        )
+    
     # Create prompt for LLM
     ingredients_str = ", ".join(request.ingredients)
     dietary_str = ", ".join(request.dietaryRestrictions) if request.dietaryRestrictions else "None"

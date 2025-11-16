@@ -1,0 +1,31 @@
+# CI/CD Testing Dependencies (without Ollama and heavy dependencies)
+
+# Testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+
+# FastAPI and dependencies
+fastapi==0.109.0
+uvicorn[standard]==0.25.0
+python-multipart==0.0.6
+
+# Core dependencies
+httpx==0.25.2
+pillow==10.1.0
+pydantic==2.5.3
+
+# NumPy with version constraint (for compatibility)
+numpy>=1.24.0,<2.0.0
+
+# Torch (CPU only for CI)
+--index-url https://download.pytorch.org/whl/cpu
+torch==2.1.2+cpu
+torchvision==0.16.2+cpu
+
+# YOLO (without full dependencies)
+ultralytics==8.1.0
+
+# Optional: Mock Ollama for testing
+# (We'll skip Ollama tests in CI)
+
