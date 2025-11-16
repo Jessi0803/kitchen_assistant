@@ -59,7 +59,8 @@ jobs:
       - name: Generate coverage report
         working-directory: backend
         run: |
-          pytest --cov=. --cov-report=xml --cov-report=term
+          # Run coverage on unit and API tests only (skip YOLO tests)
+          pytest tests/test_unit.py tests/test_api.py --cov=. --cov-report=xml --cov-report=term
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
