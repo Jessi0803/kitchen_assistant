@@ -122,6 +122,11 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Free up disk space first
+            echo "Cleaning up disk space..."
+            docker system prune -af --volumes || true
+            df -h
+            
             # Stop and remove old container
             docker stop kitchen-backend || true
             docker rm kitchen-backend || true
@@ -136,11 +141,14 @@ jobs:
               --restart unless-stopped \
               ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
             
-            # Clean up old images
+            # Clean up old images (keep only running)
             docker image prune -af
             
             # Show status
+            echo "Container status:"
             docker ps | grep kitchen-backend
+            echo "Disk usage:"
+            df -h
             
       - name: Health check
         run: |
