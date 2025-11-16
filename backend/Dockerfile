@@ -21,8 +21,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements file
 COPY requirements-docker.txt requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install PyTorch CPU version first (to avoid GPU version)
+RUN pip install --no-cache-dir torch==2.1.0+cpu torchvision==0.16.0+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install other Python dependencies (excluding torch/torchvision)
+RUN grep -v "^torch" requirements.txt > requirements_filtered.txt && \
+    pip install --no-cache-dir -r requirements_filtered.txt
 
 # Copy application code (Docker-optimized version without Ollama)
 COPY main-docker.py main.py
