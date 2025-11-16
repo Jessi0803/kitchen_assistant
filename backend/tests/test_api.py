@@ -12,7 +12,7 @@ def test_root_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
-    assert data["message"] == "Kitchen Assistant API is running!"
+    assert data["message"] == "Kitchen Assistant API"
 
 def test_health_endpoint(client):
     """Test health check endpoint"""
