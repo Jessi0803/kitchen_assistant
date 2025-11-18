@@ -6,58 +6,62 @@ Copy this code to [Mermaid Live Editor](https://mermaid.live/) to generate the d
 
 ```mermaid
 graph TB
-    subgraph iOS["iOS SwiftUI App (iPhone 12+, iOS 16+)"]
-        UI[User Interface]
-        Settings[Settings Toggles<br/>- Use Local Processing<br/>- Use MLX Generation]
+    subgraph iOS["📱 iOS KITCHEN ASSISTANT APP (iPhone 12+, iOS 16+)"]
+        Workflow["USER WORKFLOW:<br/>📸 Photo → 👁️ Detect → 💭 Input → 🍳 Recipe"]
+        Settings["⚙️ SETTINGS:<br/>☐ Use Local Processing<br/>☐ Use MLX Generation"]
         
-        UI --> Settings
+        Workflow --> Settings
         
-        Settings --> ServerMode[Server Mode]
-        Settings --> LocalMode[Local Mode]
-        Settings --> DevMode[Developer Mode]
+        Settings --> Mode1[MODE 1<br/>Server Mode]
+        Settings --> Mode2[MODE 2<br/>Local Mode]
+        Settings --> Mode3[MODE 3<br/>Developer Mode]
     end
     
-    subgraph Detection["STAGE 1: Detection Layer"]
-        AWS["☁️ Server Mode<br/>───────────<br/>AWS EC2 FastAPI<br/>YOLOv8n PyTorch<br/>~500ms-1s"]
-        CoreML1["📱 Local Mode<br/>───────────<br/>CoreML YOLO<br/>Neural Engine<br/>~100ms"]
-        CoreML2["📱 Developer Mode<br/>───────────<br/>CoreML YOLO<br/>Neural Engine<br/>~100ms"]
+    subgraph Stage1["🔍 STAGE 1: INGREDIENT DETECTION"]
+        ServerDetect["☁️ CLOUD MODE (Server)<br/>━━━━━━━━━━━━━━━<br/>AWS EC2 Server<br/>FastAPI Backend<br/><br/>Model: YOLOv8n PyTorch<br/>💾 Size: N/A<br/>🌐 Need: WiFi<br/>⏱️ Speed: 0.5-1s<br/>🔒 Privacy: Med"]
+        
+        LocalDetect["📱 LOCAL MODE (Local)<br/>━━━━━━━━━━━━━━━<br/>CoreML<br/>Neural Engine<br/><br/>Model: yolov8n.mlmodel<br/>💾 Size: ~6MB<br/>✅ Need: None<br/>⚡ Speed: ~100ms<br/>🔒 Privacy: High"]
+        
+        DevDetect["📱 LOCAL MODE (Developer)<br/>━━━━━━━━━━━━━━━<br/>CoreML<br/>Neural Engine<br/><br/>Model: yolov8n.mlmodel<br/>💾 Size: ~6MB<br/>✅ Need: None<br/>⚡ Speed: ~100ms<br/>🔒 Privacy: High"]
     end
     
-    subgraph Recipe["STAGE 2: Recipe Generation Layer"]
-        MLX1["📱 Server Mode<br/>───────────<br/>MLX LLM<br/>Qwen2.5-0.5B<br/>10-30s<br/>⭐⭐ Good"]
-        MLX2["📱 Local Mode<br/>───────────<br/>MLX LLM<br/>Qwen2.5-0.5B<br/>10-30s<br/>⭐⭐ Good"]
-        Ollama["🖥️ Developer Mode<br/>───────────<br/>Ollama LLM<br/>Qwen2.5:3b<br/>5-10s<br/>⭐⭐⭐ Excellent"]
+    subgraph Stage2["🤖 STAGE 2: RECIPE GENERATION"]
+        ServerRecipe["📱 iPhone MLX (Server)<br/>━━━━━━━━━━━━━━━<br/>Model: Qwen2.5-0.5B<br/>4-bit quantized<br/><br/>💾 Size: ~300MB<br/>🧠 Params: 500M<br/>🖥️ Hardware: iPhone GPU<br/>🌐 Need: None<br/>⏱️ Speed: 10-30s<br/>🎯 Quality: ⭐⭐ Good<br/>🔒 Privacy: High"]
+        
+        LocalRecipe["📱 iPhone MLX (Local)<br/>━━━━━━━━━━━━━━━<br/>Model: Qwen2.5-0.5B<br/>4-bit quantized<br/><br/>💾 Size: ~300MB<br/>🧠 Params: 500M<br/>🖥️ Hardware: iPhone GPU<br/>✅ Need: None<br/>⏱️ Speed: 10-30s<br/>🎯 Quality: ⭐⭐ Good<br/>🔒 Privacy: High"]
+        
+        DevRecipe["🖥️ Mac Ollama (Developer)<br/>━━━━━━━━━━━━━━━<br/>Model: Qwen2.5:3b<br/>Full model<br/><br/>💾 Size: ~2GB<br/>🧠 Params: 3B<br/>🖥️ Hardware: Mac GPU (M3)<br/>🌐 Need: WiFi<br/>⚡ Speed: 5-10s<br/>🎯 Quality: ⭐⭐⭐ Excellent<br/>🔒 Privacy: High"]
     end
     
-    subgraph Result["STAGE 3: Recipe Display"]
-        Recipe1[Recipe Detail View<br/>Title, Ingredients, Steps]
-        Recipe2[Recipe Detail View<br/>Title, Ingredients, Steps]
-        Recipe3[Recipe Detail View<br/>Title, Ingredients, Steps]
+    subgraph Stage3["📱 STAGE 3: DISPLAY TO USER"]
+        Display["📱 Recipe Detail View<br/>━━━━━━━━━━━━━━━<br/>📖 Chicken Tomato Pasta<br/>⏱️ 25 min | 👥 4 servings<br/><br/>🥗 INGREDIENTS (8)<br/>👨‍🍳 STEPS (6)<br/>📊 NUTRITION"]
     end
     
-    ServerMode -->|HTTP API| AWS
-    LocalMode -->|On-Device| CoreML1
-    DevMode -->|On-Device| CoreML2
+    Mode1 --> ServerDetect
+    Mode2 --> LocalDetect
+    Mode3 --> DevDetect
     
-    AWS -->|JSON Response| MLX1
-    CoreML1 -->|On-Device| MLX2
-    CoreML2 -->|HTTP to Mac| Ollama
+    ServerDetect -->|✅ Detected<br/>Ingredients| ServerRecipe
+    LocalDetect -->|✅ Detected<br/>Ingredients| LocalRecipe
+    DevDetect -->|✅ Detected<br/>Ingredients| DevRecipe
     
-    MLX1 --> Recipe1
-    MLX2 --> Recipe2
-    Ollama --> Recipe3
+    ServerRecipe -->|📖 Recipe JSON| Display
+    LocalRecipe -->|📖 Recipe JSON| Display
+    DevRecipe -->|📖 Recipe JSON| Display
     
-    style ServerMode fill:#e1f5ff,stroke:#01579b
-    style LocalMode fill:#e8f5e9,stroke:#2e7d32
-    style DevMode fill:#fff3e0,stroke:#e65100
+    style Mode1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style Mode2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Mode3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
     
-    style AWS fill:#ffcdd2,stroke:#c62828
-    style CoreML1 fill:#c8e6c9,stroke:#388e3c
-    style CoreML2 fill:#c8e6c9,stroke:#388e3c
+    style ServerDetect fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    style LocalDetect fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style DevDetect fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
     
-    style MLX1 fill:#b3e5fc,stroke:#0277bd
-    style MLX2 fill:#b3e5fc,stroke:#0277bd
-    style Ollama fill:#ffe0b2,stroke:#f57c00
+    style ServerRecipe fill:#b3e5fc,stroke:#0277bd,stroke-width:2px
+    style LocalRecipe fill:#b3e5fc,stroke:#0277bd,stroke-width:2px
+    style DevRecipe fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    
+    style Display fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
 ```
 
 ---
