@@ -12,35 +12,35 @@ graph TB
         
         UI --> Settings
         
-        Settings -->|OFF/OFF| ServerMode[Server Mode]
-        Settings -->|ON/ON| LocalMode[Local Mode]
-        Settings -->|ON/OFF| DevMode[Developer Mode]
+        Settings --> ServerMode[Server Mode]
+        Settings --> LocalMode[Local Mode]
+        Settings --> DevMode[Developer Mode]
     end
     
-    subgraph Detection["Detection Layer"]
-        AWS[AWS EC2 FastAPI<br/>YOLOv8n PyTorch<br/>☁️ ~500ms-1s]
-        CoreML1[CoreML YOLO<br/>Neural Engine<br/>📱 ~100ms]
-        CoreML2[CoreML YOLO<br/>Neural Engine<br/>📱 ~100ms]
+    subgraph Detection["STAGE 1: Detection Layer"]
+        AWS["☁️ Server Mode<br/>───────────<br/>AWS EC2 FastAPI<br/>YOLOv8n PyTorch<br/>~500ms-1s"]
+        CoreML1["📱 Local Mode<br/>───────────<br/>CoreML YOLO<br/>Neural Engine<br/>~100ms"]
+        CoreML2["📱 Developer Mode<br/>───────────<br/>CoreML YOLO<br/>Neural Engine<br/>~100ms"]
     end
     
-    subgraph Recipe["Recipe Generation Layer"]
-        MLX1[MLX LLM<br/>Qwen2.5-0.5B<br/>📱 10-30s<br/>Good Quality]
-        MLX2[MLX LLM<br/>Qwen2.5-0.5B<br/>📱 10-30s<br/>Good Quality]
-        Ollama[Ollama LLM<br/>Qwen2.5:3b<br/>🖥️ 5-10s<br/>Excellent Quality]
+    subgraph Recipe["STAGE 2: Recipe Generation Layer"]
+        MLX1["📱 Server Mode<br/>───────────<br/>MLX LLM<br/>Qwen2.5-0.5B<br/>10-30s<br/>⭐⭐ Good"]
+        MLX2["📱 Local Mode<br/>───────────<br/>MLX LLM<br/>Qwen2.5-0.5B<br/>10-30s<br/>⭐⭐ Good"]
+        Ollama["🖥️ Developer Mode<br/>───────────<br/>Ollama LLM<br/>Qwen2.5:3b<br/>5-10s<br/>⭐⭐⭐ Excellent"]
     end
     
-    subgraph Result["Recipe Display"]
+    subgraph Result["STAGE 3: Recipe Display"]
         Recipe1[Recipe Detail View<br/>Title, Ingredients, Steps]
         Recipe2[Recipe Detail View<br/>Title, Ingredients, Steps]
         Recipe3[Recipe Detail View<br/>Title, Ingredients, Steps]
     end
     
     ServerMode -->|HTTP API| AWS
-    LocalMode --> CoreML1
-    DevMode --> CoreML2
+    LocalMode -->|On-Device| CoreML1
+    DevMode -->|On-Device| CoreML2
     
     AWS -->|JSON Response| MLX1
-    CoreML1 --> MLX2
+    CoreML1 -->|On-Device| MLX2
     CoreML2 -->|HTTP to Mac| Ollama
     
     MLX1 --> Recipe1
@@ -74,28 +74,35 @@ sequenceDiagram
     participant Display
 
     User->>iOS: Open App
-    iOS->>Settings: Check Toggles
+    iOS->>Settings: Check Mode Settings
     
-    alt Server Mode (OFF/OFF)
+    alt Server Mode
+        Note over iOS,Detection: STAGE 1: Detection
         User->>iOS: Take Photo
-        iOS->>Detection: Upload to AWS EC2
+        iOS->>Detection: ☁️ Upload to AWS EC2
         Detection-->>iOS: Ingredients JSON
-        iOS->>Recipe: MLX on iPhone
+        Note over iOS,Recipe: STAGE 2: Recipe Generation
+        iOS->>Recipe: 📱 MLX on iPhone
         Recipe-->>Display: Recipe JSON
-    else Local Mode (ON/ON)
+    else Local Mode
+        Note over iOS,Detection: STAGE 1: Detection
         User->>iOS: Take Photo
-        iOS->>Detection: CoreML (Neural Engine)
+        iOS->>Detection: 📱 CoreML (Neural Engine)
         Detection-->>iOS: Ingredients
-        iOS->>Recipe: MLX on iPhone
+        Note over iOS,Recipe: STAGE 2: Recipe Generation
+        iOS->>Recipe: 📱 MLX on iPhone
         Recipe-->>Display: Recipe JSON
-    else Developer Mode (ON/OFF)
+    else Developer Mode
+        Note over iOS,Detection: STAGE 1: Detection
         User->>iOS: Take Photo
-        iOS->>Detection: CoreML (Neural Engine)
+        iOS->>Detection: 📱 CoreML (Neural Engine)
         Detection-->>iOS: Ingredients
-        iOS->>Recipe: HTTP to Mac Ollama
+        Note over iOS,Recipe: STAGE 2: Recipe Generation
+        iOS->>Recipe: 🖥️ HTTP to Mac Ollama
         Recipe-->>Display: Recipe JSON
     end
     
+    Note over Display,User: STAGE 3: Display
     Display->>User: Show Recipe
 ```
 
@@ -152,30 +159,28 @@ graph TD
     
     Photo --> Decision{Mode?}
     
-    Decision -->|Server| Upload[Upload to AWS<br/>~300KB compressed]
-    Decision -->|Local/Dev| CoreML[CoreML Input<br/>640x640 RGB]
+    Decision -->|Server Mode| Upload["☁️ STAGE 1: Server Mode<br/>Upload to AWS<br/>~300KB compressed"]
+    Decision -->|Local Mode| CoreML1["📱 STAGE 1: Local Mode<br/>CoreML Input<br/>640x640 RGB"]
+    Decision -->|Developer Mode| CoreML2["📱 STAGE 1: Developer Mode<br/>CoreML Input<br/>640x640 RGB"]
     
     Upload --> YOLO1[YOLOv8n PyTorch<br/>Output: Tensor<br/>5 objects detected]
-    CoreML --> YOLO2[YOLOv8n CoreML<br/>Output: MLMultiArray<br/>5 objects detected]
+    CoreML1 --> YOLO2[YOLOv8n CoreML<br/>Output: MLMultiArray<br/>5 objects detected]
+    CoreML2 --> YOLO3[YOLOv8n CoreML<br/>Output: MLMultiArray<br/>5 objects detected]
     
-    YOLO1 --> Ingredients1[Ingredients JSON<br/>~150 bytes<br/>Array of Strings]
+    YOLO1 --> Ingredients1[Ingredients JSON<br/>~150 bytes]
     YOLO2 --> Ingredients2[Ingredients Array<br/>Swift [String]<br/>5 items]
+    YOLO3 --> Ingredients3[Ingredients Array<br/>Swift [String]<br/>5 items]
     
-    Ingredients1 --> RecipeInput1[Recipe Request<br/>~180 bytes JSON]
-    Ingredients2 --> RecipeInput2[Recipe Request<br/>Swift struct]
-    
-    RecipeInput1 --> MLX1[MLX Inference<br/>Prompt: ~200 tokens<br/>Output: ~1200 tokens]
-    RecipeInput2 --> Decision2{MLX or Ollama?}
-    
-    Decision2 -->|MLX ON| MLX2[MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s]
-    Decision2 -->|MLX OFF| Ollama1[Ollama Inference<br/>Qwen2.5:3b<br/>5-10s]
+    Ingredients1 --> MLX1["📱 STAGE 2: Server Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
+    Ingredients2 --> MLX2["📱 STAGE 2: Local Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
+    Ingredients3 --> Ollama1["🖥️ STAGE 2: Developer Mode<br/>Ollama Inference<br/>Qwen2.5:3b<br/>5-10s"]
     
     MLX1 --> RecipeJSON1[Recipe JSON<br/>~3-5KB<br/>snake_case]
     MLX2 --> RecipeJSON2[Recipe JSON<br/>~3-5KB<br/>snake_case]
     Ollama1 --> RecipeJSON3[Recipe JSON<br/>~3-5KB<br/>snake_case]
     
     RecipeJSON1 --> Parse1[JSONDecoder<br/>Convert to Swift]
-    RecipeJSON2 --> Parse2[Direct Swift struct]
+    RecipeJSON2 --> Parse2[JSONDecoder<br/>Convert to Swift]
     RecipeJSON3 --> Parse3[JSONDecoder<br/>Convert to Swift]
     
     Parse1 --> Display1[SwiftUI Display]
@@ -184,7 +189,8 @@ graph TD
     
     style Photo fill:#e1f5fe
     style Upload fill:#ffcdd2
-    style CoreML fill:#c8e6c9
+    style CoreML1 fill:#c8e6c9
+    style CoreML2 fill:#c8e6c9
     style MLX1 fill:#b3e5fc
     style MLX2 fill:#b3e5fc
     style Ollama1 fill:#ffe0b2
