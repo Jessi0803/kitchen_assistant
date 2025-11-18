@@ -21,7 +21,6 @@
        ║   MODE 1      ║ ║   MODE 2      ║ ║   MODE 3      ║
        ║ Server Mode   ║ ║ Local Mode    ║ ║ Developer     ║
        ║               ║ ║               ║ ║ Mode          ║
-       ║ ☐ OFF, ☐ OFF ║ ║ ☑️ ON, ☑️ ON  ║ ║ ☑️ ON, ☐ OFF  ║
        ╚═══════════════╝ ╚═══════════════╝ ╚═══════════════╝
 
 

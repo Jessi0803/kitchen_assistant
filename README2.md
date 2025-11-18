@@ -29,19 +29,17 @@ iOS SwiftUI App
         └─ Qwen2.5-0.5B-Instruct-4bit
 ```
 
-**Configuration**: `useLocalProcessing = false`
+**How to Enable**: Toggle OFF both "Use Local Processing" and "Use MLX Generation"
 
-**Use Cases**:
-- Testing on iOS Simulator (CoreML not available)
+**Best For**:
+- Testing on iOS Simulator (CoreML not available on Simulator)
 - Offloading detection to cloud for older devices
 - Hybrid approach: Cloud detection + Local recipe generation
 
-**Settings Display**:
-```
-🌐 Server Mode
-• Detection: Cloud Server, Generation: On-device
-• Requires internet for detection
-```
+**Characteristics**:
+- 🌐 Requires internet for ingredient detection
+- 📱 Recipe generation runs on-device (offline)
+- ☁️ Uses AWS EC2 server resources
 
 ---
 
@@ -58,21 +56,19 @@ iOS SwiftUI App (Standalone)
         └─ 10-30s generation on GPU
 ```
 
-**Configuration**: `useLocalProcessing = true` + `useMLXGeneration = true`
+**How to Enable**: Toggle ON both "Use Local Processing" and "Use MLX Generation"
 
-**Use Cases**:
+**Best For**:
 - Production deployment (recommended)
 - Complete privacy (no data leaves device)
 - Offline capability
 - No server costs
 
-**Settings Display**:
-```
-📱 Offline Mode (推薦)
-• Detection & Generation: On-device
-• 100% offline, completely private
-• Requires iOS 16+ (iPhone 12+)
-```
+**Characteristics**:
+- ✅ 100% offline, no internet required
+- 🔒 Complete privacy, all data on-device
+- 📱 Requires iPhone 12+ with iOS 16+
+- ⚡ Fast detection (~100ms), moderate recipe generation (10-30s)
 
 ---
 
@@ -89,21 +85,19 @@ iOS SwiftUI App
         └─ 5-10s generation (larger 3B model)
 ```
 
-**Configuration**: `useLocalProcessing = true` + `useMLXGeneration = false`
+**How to Enable**: Toggle ON "Use Local Processing", toggle OFF "Use MLX Generation"
 
-**Use Cases**:
+**Best For**:
 - Development and testing
 - Better recipe quality (3B vs 0.5B model)
 - Faster generation (Mac GPU > iPhone GPU)
 - Debugging and experimentation
 
-**Settings Display**:
-```
-🔧 Developer Mode
-• Detection: On-device, Generation: Ollama
-• Requires Ollama server on Mac
-• For development & testing
-```
+**Characteristics**:
+- 🖥️ Requires Ollama server running on Mac
+- 🌐 Requires local network connection (WiFi)
+- ⚡ Fastest recipe generation (5-10s)
+- ⭐⭐⭐ Best recipe quality (3B model with 6x more parameters)
 
 ---
 
@@ -125,9 +119,9 @@ iOS SwiftUI App
                     │               │               │
                     ▼               ▼               ▼
         ╔═══════════════╗ ╔═══════════════╗ ╔═══════════════╗
-        ║ MODE 1        ║ ║ MODE 2        ║ ║ MODE 3        ║
+        ║   MODE 1      ║ ║   MODE 2      ║ ║   MODE 3      ║
         ║ Server Mode   ║ ║ Local Mode    ║ ║ Developer     ║
-        ║ (☐ OFF, ☐ OFF)║ ║ (☑️ ON, ☑️ ON) ║ ║ (☑️ ON, ☐ OFF)║
+        ║               ║ ║               ║ ║ Mode          ║
         ╚═══════════════╝ ╚═══════════════╝ ╚═══════════════╝
 
 
@@ -1276,18 +1270,18 @@ In the app on your iPhone:
 └─────────────────────────────────────────────┘
 ```
 
-**Three Configuration Options**:
+**Three Mode Configurations**:
 
-| Toggle 1 | Toggle 2 | Result |
-|----------|----------|--------|
-| ☐ OFF | ☐ OFF | **Server Mode**: Cloud detection + Local MLX recipe |
-| ☑️ ON | ☐ OFF | **Developer Mode**: CoreML detection + Ollama recipe |
-| ☑️ ON | ☑️ ON | **Local Mode**: CoreML detection + MLX recipe (100% offline) |
+| Use Local Processing | Use MLX Generation | Mode | Description |
+|---------------------|-------------------|------|-------------|
+| ☐ OFF | ☐ OFF | **Server Mode** | Cloud detection + On-device MLX recipe |
+| ☑️ ON | ☐ OFF | **Developer Mode** | CoreML detection + Ollama recipe on Mac |
+| ☑️ ON | ☑️ ON | **Local Mode** | CoreML detection + MLX recipe (100% offline) |
 
-**Recommended Settings**:
-- **For Production**: Both ON (Local Mode)
-- **For Development**: First ON, Second OFF (Developer Mode)
-- **For Simulator**: Both OFF (Server Mode)
+**Mode Selection Guide**:
+- **Server Mode**: Best for Simulator testing (CoreML unavailable)
+- **Developer Mode**: Best for development (excellent recipe quality from 3B model)
+- **Local Mode**: Best for production (complete privacy, no server needed)
 
 ---
 
