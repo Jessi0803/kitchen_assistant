@@ -6,9 +6,9 @@ Copy this code to [Mermaid Live Editor](https://mermaid.live/) to generate the d
 
 ```mermaid
 graph TB
-    subgraph iOS["📱 iOS KITCHEN ASSISTANT APP (iPhone 12+, iOS 16+)"]
-        Workflow["USER WORKFLOW:<br/>📸 Photo → 👁️ Detect → 💭 Input → 🍳 Recipe"]
-        Settings["⚙️ SETTINGS:<br/>☐ Use Local Processing<br/>☐ Use MLX Generation"]
+    subgraph iOS["iOS KITCHEN ASSISTANT APP (iPhone 12+, iOS 16+)"]
+        Workflow["USER WORKFLOW:<br/>Photo → Detect → Input → Recipe"]
+        Settings["SETTINGS:<br/>Use Local Processing<br/>Use MLX Generation"]
         
         Workflow --> Settings
         
@@ -17,37 +17,37 @@ graph TB
         Settings --> Mode3[MODE 3<br/>Developer Mode]
     end
     
-    subgraph Stage1["🔍 STAGE 1: INGREDIENT DETECTION"]
-        ServerDetect["☁️ CLOUD MODE (Server)<br/>━━━━━━━━━━━━━━━<br/>AWS EC2 Server<br/>FastAPI Backend<br/><br/>Model: YOLOv8n PyTorch<br/>💾 Size: N/A<br/>🌐 Need: WiFi<br/>⏱️ Speed: 0.5-1s<br/>🔒 Privacy: Med"]
+    subgraph Stage1["STAGE 1: INGREDIENT DETECTION"]
+        ServerDetect["☁️ Server Mode<br/>━━━━━━━━━━━━━━━<br/>AWS EC2 Server<br/>FastAPI Backend<br/><br/>Model: YOLOv8n PyTorch<br/>Size: N/A<br/>Need: WiFi<br/>Speed: 0.5-1s<br/>Privacy: Med"]
         
-        LocalDetect["📱 LOCAL MODE (Local)<br/>━━━━━━━━━━━━━━━<br/>CoreML<br/>Neural Engine<br/><br/>Model: yolov8n.mlmodel<br/>💾 Size: ~6MB<br/>✅ Need: None<br/>⚡ Speed: ~100ms<br/>🔒 Privacy: High"]
+        LocalDetect["📱 Local Mode<br/>━━━━━━━━━━━━━━━<br/>CoreML<br/>Neural Engine<br/><br/>Model: yolov8n.mlmodel<br/>Size: ~6MB<br/>Need: None<br/>Speed: ~100ms<br/>Privacy: High"]
         
-        DevDetect["📱 LOCAL MODE (Developer)<br/>━━━━━━━━━━━━━━━<br/>CoreML<br/>Neural Engine<br/><br/>Model: yolov8n.mlmodel<br/>💾 Size: ~6MB<br/>✅ Need: None<br/>⚡ Speed: ~100ms<br/>🔒 Privacy: High"]
+        DevDetect["📱 Developer Mode<br/>━━━━━━━━━━━━━━━<br/>CoreML<br/>Neural Engine<br/><br/>Model: yolov8n.mlmodel<br/>Size: ~6MB<br/>Need: None<br/>Speed: ~100ms<br/>Privacy: High"]
     end
     
-    subgraph Stage2["🤖 STAGE 2: RECIPE GENERATION"]
-        ServerRecipe["📱 iPhone MLX (Server)<br/>━━━━━━━━━━━━━━━<br/>Model: Qwen2.5-0.5B<br/>4-bit quantized<br/><br/>💾 Size: ~300MB<br/>🧠 Params: 500M<br/>🖥️ Hardware: iPhone GPU<br/>🌐 Need: None<br/>⏱️ Speed: 10-30s<br/>🎯 Quality: ⭐⭐ Good<br/>🔒 Privacy: High"]
+    subgraph Stage2["STAGE 2: RECIPE GENERATION"]
+        ServerRecipe["📱 Server Mode<br/>━━━━━━━━━━━━━━━<br/>iPhone MLX<br/>Model: Qwen2.5-0.5B<br/>4-bit quantized<br/><br/>Size: ~300MB<br/>Params: 500M<br/>Hardware: iPhone GPU<br/>Need: None<br/>Speed: 10-30s<br/>Quality: Good<br/>Privacy: High"]
         
-        LocalRecipe["📱 iPhone MLX (Local)<br/>━━━━━━━━━━━━━━━<br/>Model: Qwen2.5-0.5B<br/>4-bit quantized<br/><br/>💾 Size: ~300MB<br/>🧠 Params: 500M<br/>🖥️ Hardware: iPhone GPU<br/>✅ Need: None<br/>⏱️ Speed: 10-30s<br/>🎯 Quality: ⭐⭐ Good<br/>🔒 Privacy: High"]
+        LocalRecipe["📱 Local Mode<br/>━━━━━━━━━━━━━━━<br/>iPhone MLX<br/>Model: Qwen2.5-0.5B<br/>4-bit quantized<br/><br/>Size: ~300MB<br/>Params: 500M<br/>Hardware: iPhone GPU<br/>Need: None<br/>Speed: 10-30s<br/>Quality: Good<br/>Privacy: High"]
         
-        DevRecipe["🖥️ Mac Ollama (Developer)<br/>━━━━━━━━━━━━━━━<br/>Model: Qwen2.5:3b<br/>Full model<br/><br/>💾 Size: ~2GB<br/>🧠 Params: 3B<br/>🖥️ Hardware: Mac GPU (M3)<br/>🌐 Need: WiFi<br/>⚡ Speed: 5-10s<br/>🎯 Quality: ⭐⭐⭐ Excellent<br/>🔒 Privacy: High"]
+        DevRecipe["🖥️ Developer Mode<br/>━━━━━━━━━━━━━━━<br/>Mac Ollama<br/>Model: Qwen2.5:3b<br/>Full model<br/><br/>Size: ~2GB<br/>Params: 3B<br/>Hardware: Mac GPU (M3)<br/>Need: WiFi<br/>Speed: 5-10s<br/>Quality: Excellent<br/>Privacy: High"]
     end
     
-    subgraph Stage3["📱 STAGE 3: DISPLAY TO USER"]
-        Display["📱 Recipe Detail View<br/>━━━━━━━━━━━━━━━<br/>📖 Chicken Tomato Pasta<br/>⏱️ 25 min | 👥 4 servings<br/><br/>🥗 INGREDIENTS (8)<br/>👨‍🍳 STEPS (6)<br/>📊 NUTRITION"]
+    subgraph Stage3["STAGE 3: DISPLAY TO USER"]
+        Display["Recipe Detail View<br/>━━━━━━━━━━━━━━━<br/>Chicken Tomato Pasta<br/>25 min | 4 servings<br/><br/>INGREDIENTS (8)<br/>STEPS (6)<br/>NUTRITION"]
     end
     
     Mode1 --> ServerDetect
     Mode2 --> LocalDetect
     Mode3 --> DevDetect
     
-    ServerDetect -->|✅ Detected<br/>Ingredients| ServerRecipe
-    LocalDetect -->|✅ Detected<br/>Ingredients| LocalRecipe
-    DevDetect -->|✅ Detected<br/>Ingredients| DevRecipe
+    ServerDetect -->|Detected<br/>Ingredients| ServerRecipe
+    LocalDetect -->|Detected<br/>Ingredients| LocalRecipe
+    DevDetect -->|Detected<br/>Ingredients| DevRecipe
     
-    ServerRecipe -->|📖 Recipe JSON| Display
-    LocalRecipe -->|📖 Recipe JSON| Display
-    DevRecipe -->|📖 Recipe JSON| Display
+    ServerRecipe -->|Recipe JSON| Display
+    LocalRecipe -->|Recipe JSON| Display
+    DevRecipe -->|Recipe JSON| Display
     
     style Mode1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     style Mode2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
@@ -83,26 +83,26 @@ sequenceDiagram
     alt Server Mode
         Note over iOS,Detection: STAGE 1: Detection
         User->>iOS: Take Photo
-        iOS->>Detection: ☁️ Upload to AWS EC2
+        iOS->>Detection: Upload to AWS EC2
         Detection-->>iOS: Ingredients JSON
         Note over iOS,Recipe: STAGE 2: Recipe Generation
-        iOS->>Recipe: 📱 MLX on iPhone
+        iOS->>Recipe: MLX on iPhone
         Recipe-->>Display: Recipe JSON
     else Local Mode
         Note over iOS,Detection: STAGE 1: Detection
         User->>iOS: Take Photo
-        iOS->>Detection: 📱 CoreML (Neural Engine)
+        iOS->>Detection: CoreML (Neural Engine)
         Detection-->>iOS: Ingredients
         Note over iOS,Recipe: STAGE 2: Recipe Generation
-        iOS->>Recipe: 📱 MLX on iPhone
+        iOS->>Recipe: MLX on iPhone
         Recipe-->>Display: Recipe JSON
     else Developer Mode
         Note over iOS,Detection: STAGE 1: Detection
         User->>iOS: Take Photo
-        iOS->>Detection: 📱 CoreML (Neural Engine)
+        iOS->>Detection: CoreML (Neural Engine)
         Detection-->>iOS: Ingredients
         Note over iOS,Recipe: STAGE 2: Recipe Generation
-        iOS->>Recipe: 🖥️ HTTP to Mac Ollama
+        iOS->>Recipe: HTTP to Mac Ollama
         Recipe-->>Display: Recipe JSON
     end
     
@@ -163,21 +163,21 @@ graph TD
     
     Photo --> Decision{Mode?}
     
-    Decision -->|Server Mode| Upload["☁️ STAGE 1: Server Mode<br/>Upload to AWS<br/>~300KB compressed"]
-    Decision -->|Local Mode| CoreML1["📱 STAGE 1: Local Mode<br/>CoreML Input<br/>640x640 RGB"]
-    Decision -->|Developer Mode| CoreML2["📱 STAGE 1: Developer Mode<br/>CoreML Input<br/>640x640 RGB"]
+    Decision -->|Server Mode| Upload["STAGE 1: Server Mode<br/>Upload to AWS<br/>~300KB compressed"]
+    Decision -->|Local Mode| CoreML1["STAGE 1: Local Mode<br/>CoreML Input<br/>640x640 RGB"]
+    Decision -->|Developer Mode| CoreML2["STAGE 1: Developer Mode<br/>CoreML Input<br/>640x640 RGB"]
     
     Upload --> YOLO1[YOLOv8n PyTorch<br/>Output: Tensor<br/>5 objects detected]
     CoreML1 --> YOLO2[YOLOv8n CoreML<br/>Output: MLMultiArray<br/>5 objects detected]
     CoreML2 --> YOLO3[YOLOv8n CoreML<br/>Output: MLMultiArray<br/>5 objects detected]
     
     YOLO1 --> Ingredients1[Ingredients JSON<br/>~150 bytes]
-    YOLO2 --> Ingredients2[Ingredients Array<br/>Swift [String]<br/>5 items]
-    YOLO3 --> Ingredients3[Ingredients Array<br/>Swift [String]<br/>5 items]
+    YOLO2 --> Ingredients2[Ingredients Array<br/>Swift String<br/>5 items]
+    YOLO3 --> Ingredients3[Ingredients Array<br/>Swift String<br/>5 items]
     
-    Ingredients1 --> MLX1["📱 STAGE 2: Server Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
-    Ingredients2 --> MLX2["📱 STAGE 2: Local Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
-    Ingredients3 --> Ollama1["🖥️ STAGE 2: Developer Mode<br/>Ollama Inference<br/>Qwen2.5:3b<br/>5-10s"]
+    Ingredients1 --> MLX1["STAGE 2: Server Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
+    Ingredients2 --> MLX2["STAGE 2: Local Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
+    Ingredients3 --> Ollama1["STAGE 2: Developer Mode<br/>Ollama Inference<br/>Qwen2.5:3b<br/>5-10s"]
     
     MLX1 --> RecipeJSON1[Recipe JSON<br/>~3-5KB<br/>snake_case]
     MLX2 --> RecipeJSON2[Recipe JSON<br/>~3-5KB<br/>snake_case]
