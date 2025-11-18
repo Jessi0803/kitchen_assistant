@@ -14,42 +14,188 @@
 
 ## Current Architecture
 
-### Dual Architecture Support
+### Triple Architecture Support
 
-This project supports **two deployment modes**:
+This project supports **three deployment modes** that can be toggled via app settings:
 
-#### 1. Server-Based Architecture (Development/Testing)
+#### 1. Server Mode (Cloud Detection + Local Recipe)
 ```
-iOS SwiftUI App ← REST API → FastAPI Backend (localhost:8000)
-                               ↓
-                            Fine-tuned YOLOv8n for ingredient detection
-                            Qwen2.5:3b (Ollama) for recipe generation
+iOS SwiftUI App
+    ↓
+    ├─ Detection: REST API → AWS EC2 FastAPI Backend
+    │   └─ Fine-tuned YOLOv8n (Docker container)
+    │
+    └─ Recipe Generation: MLX on-device
+        └─ Qwen2.5-0.5B-Instruct-4bit
 ```
+
+**Configuration**: `useLocalProcessing = false`
 
 **Use Cases**:
-- Development and testing on Simulator
-- High-accuracy inference with larger models
-- Shared backend for multiple clients
+- Testing on iOS Simulator (CoreML not available)
+- Offloading detection to cloud for older devices
+- Hybrid approach: Cloud detection + Local recipe generation
+
+**Settings Display**:
+```
+🌐 Server Mode
+• Detection: Cloud Server, Generation: On-device
+• Requires internet for detection
+```
 
 ---
 
-#### 2. On-Device Architecture (Production/Offline)
+#### 2. Local Mode (100% Offline)
 ```
 iOS SwiftUI App (Standalone)
     ↓
     ├─ CoreML YOLOv8n (Ingredient Detection)
     │   └─ yolov8n_merged_food_cpu_aug_finetuned.mlmodelc
+    │   └─ ~100ms inference on Neural Engine
     │
     └─ MLX LLM (Recipe Generation)
         └─ Qwen2.5-0.5B-Instruct-4bit
+        └─ 10-30s generation on GPU
+```
+
+**Configuration**: `useLocalProcessing = true` + `useMLXGeneration = true`
+
+**Use Cases**:
+- Production deployment (recommended)
+- Complete privacy (no data leaves device)
+- Offline capability
+- No server costs
+
+**Settings Display**:
+```
+📱 Offline Mode (推薦)
+• Detection & Generation: On-device
+• 100% offline, completely private
+• Requires iOS 16+ (iPhone 12+)
+```
+
+---
+
+#### 3. Developer Mode (Local Detection + Ollama Recipe)
+```
+iOS SwiftUI App
+    ↓
+    ├─ CoreML YOLOv8n (Ingredient Detection)
+    │   └─ yolov8n_merged_food_cpu_aug_finetuned.mlmodelc
+    │   └─ ~100ms inference on Neural Engine
+    │
+    └─ Ollama LLM (Recipe Generation)
+        └─ Qwen2.5:3b (on Mac via network)
+        └─ 5-10s generation (larger 3B model)
+```
+
+**Configuration**: `useLocalProcessing = true` + `useMLXGeneration = false`
+
+**Use Cases**:
+- Development and testing
+- Better recipe quality (3B vs 0.5B model)
+- Faster generation (Mac GPU > iPhone GPU)
+- Debugging and experimentation
+
+**Settings Display**:
+```
+🔧 Developer Mode
+• Detection: On-device, Generation: Ollama
+• Requires Ollama server on Mac
+• For development & testing
 ```
 
 ---
 
 ### Extended System Architecture
 
-### Complete Frontend-Backend Architecture Diagram
-![App Architecture](image.png)
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│                       iOS SwiftUI Application                              │
+│                      (iPhone 12+, iOS 16.0+)                              │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────────────────┐ │
+│  │  Home   │  │ Camera  │  │ Recipe  │  │      Settings               │ │
+│  │  View   │  │  View   │  │  Tab    │  │  ☐ Use Local Processing     │ │
+│  └─────────┘  └─────────┘  └─────────┘  │  ☐ Use MLX Generation       │ │
+│                                           └─────────────────────────────┘ │
+│                                                    │                       │
+│                     ┌──────────────────────────────┼───────────────┐      │
+│                     │                              │               │      │
+└─────────────────────┼──────────────────────────────┼───────────────┼──────┘
+                      ▼                              ▼               ▼
+              ┌───────────────┐           ┌──────────────┐  ┌──────────────┐
+              │ Server Mode   │           │ Local Mode   │  │ Developer    │
+              │   (OFF/OFF)   │           │   (ON/ON)    │  │   (ON/OFF)   │
+              └───────┬───────┘           └──────┬───────┘  └──────┬───────┘
+                      │                          │                  │
+═══════════════════════╪══════════════════════════╪══════════════════╪═══════
+    DETECTION         │                          │                  │
+═══════════════════════╪══════════════════════════╪══════════════════╪═══════
+                      │                          │                  │
+                      ▼                          ▼                  ▼
+            ┌──────────────────┐      ┌──────────────────┐  ┌──────────────┐
+            │  AWS EC2 Server  │      │  CoreML YOLO     │  │  CoreML YOLO │
+            │  ☁️ FastAPI      │      │  📱 Neural Engine│  │  📱 Neural   │
+            │  YOLOv8n PyTorch │      │  yolov8n.mlmodel │  │     Engine   │
+            │  ~500ms-1s       │      │  ~100ms          │  │  ~100ms      │
+            └────────┬─────────┘      └────────┬─────────┘  └──────┬───────┘
+                     │                         │                    │
+                     └─────────────────────────┴────────────────────┘
+                                               │
+                              ✅ Detected Ingredients
+                                 ["Tomato", "Cheese", "Chicken"]
+                                               │
+═══════════════════════════════════════════════╪═══════════════════════════════
+    RECIPE GENERATION                          │
+═══════════════════════════════════════════════╪═══════════════════════════════
+                                               │
+                     ┌─────────────────────────┼──────────────────┐
+                     │                         │                  │
+                     ▼                         ▼                  ▼
+          ┌──────────────────┐      ┌──────────────────┐  ┌──────────────────┐
+          │  MLX LLM         │      │  MLX LLM         │  │  Ollama LLM      │
+          │  📱 On-Device    │      │  📱 On-Device    │  │  🖥️ Mac Server   │
+          │  Qwen2.5-0.5B    │      │  Qwen2.5-0.5B    │  │  Qwen2.5:3b      │
+          │  4-bit quant     │      │  4-bit quant     │  │  Full precision  │
+          │  (~300MB)        │      │  (~300MB)        │  │  (~2GB)          │
+          │  10-30s          │      │  10-30s          │  │  5-10s           │
+          │  Good Quality    │      │  Good Quality    │  │  Excellent       │
+          └────────┬─────────┘      └────────┬─────────┘  └────────┬─────────┘
+                   │                         │                      │
+                   └─────────────────────────┴──────────────────────┘
+                                             │
+                              📖 Generated Recipe (JSON)
+                                 {title, ingredients, steps...}
+                                             │
+═══════════════════════════════════════════════════════════════════════════════
+                                             ▼
+                              ┌──────────────────────────┐
+                              │   RecipeDetailView       │
+                              │  📖 Title & Description  │
+                              │  🥗 Ingredients List     │
+                              │  👨‍🍳 Step-by-Step        │
+                              │  🏷️  Tags                │
+                              │  📊 Nutrition Info       │
+                              └──────────────────────────┘
+```
+
+**Architecture Overview**:
+- **3 Processing Modes**: Server, Local, Developer
+- **Flexible Configuration**: User-togglable in Settings
+- **Hybrid Approach**: Mix cloud and edge computing
+- **Privacy-First**: Local and Developer modes keep all data on-device
+- **Performance Optimized**: Neural Engine + GPU acceleration
+
+**Key Features**:
+- 🔄 **Mode Switching**: Real-time mode changes via Settings
+- 🛡️ **Privacy Options**: Choose between cloud and on-device processing
+- ⚡ **Fast Detection**: CoreML achieves ~100ms inference
+- 🤖 **Quality Recipes**: Ollama 3B model for best results in Developer Mode
+- 📱 **Offline Capable**: Local Mode works without internet
+
+For detailed architecture diagrams, see: [`ARCHITECTURE_DIAGRAM.md`](ARCHITECTURE_DIAGRAM.md) and [`architecture-mermaid.md`](architecture-mermaid.md)
 
 ---
 
@@ -57,11 +203,13 @@ iOS SwiftUI App (Standalone)
 
 ### Complete Frontend-Backend Architecture
 - **Native iOS SwiftUI App** with full user interface
-- **Dual AI Processing Modes**:
-  - **Server Mode**: Python FastAPI Backend with RESTful API services
-  - **Local Mode**: On-device CoreML + MLX inference
+- **Triple AI Processing Modes**:
+  - **Server Mode**: AWS EC2 FastAPI Backend (detection) + MLX on-device (recipe)
+  - **Local Mode**: CoreML (detection) + MLX (recipe) - 100% offline
+  - **Developer Mode**: CoreML (detection) + Ollama on Mac (recipe) - for development
 - **End-to-End Data Flow** from camera capture to recipe display
-- **Automatic Mode Detection**: Switches between Simulator (server) and real device (local/server)
+- **User-Configurable Mode Selection**: Toggle in Settings with detailed descriptions
+- **Automatic Fallbacks**: Graceful handling when modes are unavailable
 
 ---
 
@@ -973,42 +1121,96 @@ Display Content:
 
 ## Quick Start Guide
 
-### 1. Install Ollama and Download Model
+### Choose Your Mode
 
-```bash
-# Install Ollama
-brew install ollama
+#### Option A: Local Mode (Recommended for Production)
+**Requirements**: iPhone 12+ with iOS 16+
 
-# Start Ollama service
-brew services start ollama
+1. **Deploy app to real device**:
+   ```bash
+   open ios-app/KitchenAssistant.xcodeproj
+   # Select your iPhone in Xcode, then Run
+   ```
 
-# Download Qwen2.5:3b model (~2GB)
-ollama pull qwen2.5:3b
+2. **Enable Local Processing in app**:
+   - Open Settings tab
+   - Toggle **"Use Local Processing"** ON
+   - Toggle **"Use MLX Generation"** ON
 
-# Test the model
-ollama run qwen2.5:3b "Hello"
-```
+3. **First use**: MLX model (~300MB) will auto-download from HuggingFace
 
-### 2. Start the Backend Server
-```bash
-cd backend
-source fresh_venv/bin/activate  # Activate virtual environment
-python main.py                  # Start FastAPI server
-```
-Server will start at `http://localhost:8000`
+4. **Use the app**:
+   - Take photo of ingredients
+   - Enter meal craving
+   - Generate recipe (10-30s on-device)
 
-### 3. Run iOS App
-```bash
-open ios-app/KitchenAssistant.xcodeproj
-```
-Select iOS simulator in Xcode and press Play to run
+---
 
-### 4. Test Complete Workflow
-1. Open app in iOS simulator
-2. Switch to "Scan Fridge" tab
-3. Select or capture a photo
-4. Enter desired meal type
-5. View generated complete recipe
+#### Option B: Developer Mode (Best for Development)
+**Requirements**: iPhone 12+ + Mac with Ollama
+
+1. **Install Ollama on Mac**:
+   ```bash
+   # Install Ollama
+   brew install ollama
+   
+   # Start Ollama service
+   brew services start ollama
+   
+   # Download Qwen2.5:3b model (~2GB)
+   ollama pull qwen2.5:3b
+   
+   # Test the model
+   ollama run qwen2.5:3b "Hello"
+   ```
+
+2. **Deploy app to iPhone**:
+   ```bash
+   open ios-app/KitchenAssistant.xcodeproj
+   ```
+
+3. **Configure app settings**:
+   - Toggle **"Use Local Processing"** ON (for CoreML detection)
+   - Toggle **"Use MLX Generation"** OFF (to use Ollama)
+
+4. **Use the app**:
+   - Take photo → CoreML detects (~100ms)
+   - Enter meal → Ollama generates (5-10s with better quality)
+
+---
+
+#### Option C: Server Mode (For Simulator Testing)
+**Requirements**: AWS EC2 backend (or local FastAPI for development)
+
+1. **Start Backend** (if running locally):
+   ```bash
+   cd backend
+   source fresh_venv/bin/activate
+   python main.py  # Starts at http://localhost:8000
+   ```
+
+2. **Run iOS Simulator**:
+   ```bash
+   open ios-app/KitchenAssistant.xcodeproj
+   # Select iPhone Simulator, then Run
+   ```
+
+3. **App will automatically use Server Mode** (CoreML not available on Simulator)
+
+4. **Use the app**:
+   - Select photo from library
+   - Server detects ingredients
+   - MLX generates recipe on Simulator (if iOS 16+ Mac)
+
+---
+
+### Mode Comparison at a Glance
+
+| Mode | Setup Time | Recipe Quality | Use Case |
+|------|-----------|---------------|----------|
+| **Local** | 5 min | Good | Production, Privacy |
+| **Developer** | 10 min | Excellent | Development |
+| **Server** | 15 min | Good | Simulator Testing |
 
 ---
 
@@ -1047,20 +1249,31 @@ Select iOS simulator in Xcode and press Play to run
 
 In the app on your iPhone:
 
-1. **Tap Settings icon** (top-right corner)
-2. **Enable "Use Local Processing"** (toggles CoreML + MLX)
-3. **Enable "Use MLX Generation"** (for on-device LLM)
+**Settings Tab Configuration**:
 
 ```
-Settings:
-┌────────────────────────────────────┐
-│ ☑️ Use Local Processing            │  ← Enable this
-│    (CoreML YOLO detection)         │
-│                                    │
-│ ☑️ Use MLX Generation              │  ← Enable this
-│    (On-device LLM)                 │
-└────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ AI Processing Mode                          │
+├─────────────────────────────────────────────┤
+│                                             │
+│ ☐ Use Local Processing                     │
+│ ☐ Use On-Device MLX LLM                    │
+│                                             │
+└─────────────────────────────────────────────┘
 ```
+
+**Three Configuration Options**:
+
+| Toggle 1 | Toggle 2 | Result |
+|----------|----------|--------|
+| ☐ OFF | ☐ OFF | **Server Mode**: Cloud detection + Local MLX recipe |
+| ☑️ ON | ☐ OFF | **Developer Mode**: CoreML detection + Ollama recipe |
+| ☑️ ON | ☑️ ON | **Local Mode**: CoreML detection + MLX recipe (100% offline) |
+
+**Recommended Settings**:
+- **For Production**: Both ON (Local Mode)
+- **For Development**: First ON, Second OFF (Developer Mode)
+- **For Simulator**: Both OFF (Server Mode)
 
 ---
 
@@ -1099,23 +1312,28 @@ Settings:
 - iPhone 12/13: 8-15 tokens/s (30-60 seconds)
 
 
-### Comparison: Local vs Server Mode
+### Comparison: Three Processing Modes
 
-| Feature | Local (CoreML + MLX) | Server (FastAPI + Ollama) |
-|---------|---------------------|--------------------------|
-| **Privacy** | ✅ All data on-device | ⚠️ Data sent to server |
-| **Internet** | ✅ Fully offline | ❌ Required |
-| **Speed (Detection)** | ✅ ~100ms | ~500ms-1s |
-| **Speed (Recipe)** | ⚠️ 10-30s | ✅ 5-10s |
-| **Quality (Recipe)** | ⚠️ Good (0.5B model) | ✅ Excellent (3B model) |
-| **Setup** | ✅ No setup needed | ⚠️ Requires backend |
-| **Device Support** | ⚠️ iPhone 12+ only | ✅ All devices |
-| **Simulator** | ❌ Not supported | ✅ Supported |
+| Feature | Server Mode | Local Mode | Developer Mode |
+|---------|-------------|------------|----------------|
+| **Detection** | ☁️ AWS EC2 (YOLOv8n) | 📱 CoreML (Neural Engine) | 📱 CoreML (Neural Engine) |
+| **Recipe Generation** | 📱 MLX 0.5B (on-device) | 📱 MLX 0.5B (on-device) | 🖥️ Ollama 3B (Mac) |
+| **Privacy** | ⚠️ Detection data to cloud | ✅ 100% on-device | ✅ 100% on-device |
+| **Internet Required** | ⚠️ For detection only | ✅ Fully offline | ⚠️ For Ollama connection |
+| **Speed (Detection)** | ~500ms-1s + network | ✅ ~100ms | ✅ ~100ms |
+| **Speed (Recipe)** | ⚠️ 10-30s (0.5B) | ⚠️ 10-30s (0.5B) | ✅ 5-10s (3B, Mac GPU) |
+| **Recipe Quality** | ⚠️ Good (0.5B) | ⚠️ Good (0.5B) | ✅ Excellent (3B) |
+| **Setup Required** | ⚠️ AWS EC2 backend | ✅ None | ⚠️ Ollama on Mac |
+| **Device Support** | ✅ All iOS devices | ⚠️ iPhone 12+ (iOS 16+) | ⚠️ iPhone 12+ + Mac |
+| **Simulator Support** | ✅ Yes | ❌ No (MLX unavailable) | ✅ Yes |
+| **Server Costs** | ⚠️ AWS EC2 costs | ✅ Free | ✅ Free |
+| **Best For** | Testing/Simulator | Production/Privacy | Development |
 
 **Recommendation**:
-- **Development/Testing**: Use Server Mode
-- **Production App**: Use Local Mode (better privacy, no server costs)
-- **Best of Both**: Offer users a toggle to choose
+- **For Development**: Use **Developer Mode** (best recipe quality, fast iteration)
+- **For Testing on Simulator**: Use **Server Mode** (only mode that works on Simulator)
+- **For Production Deployment**: Use **Local Mode** (privacy, offline, no costs)
+- **User Choice**: Let users toggle between Server and Local modes in Settings
 
 ---
 
