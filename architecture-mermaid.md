@@ -155,41 +155,41 @@ graph LR
 
 ---
 
-## Data Flow with Sizes
+## Data Flow with Sizes (Horizontal Layout)
 
 ```mermaid
-graph TD
+graph LR
     Photo[User Photo<br/>UIImage<br/>~2MB JPEG]
     
     Photo --> Decision{Mode?}
     
-    Decision -->|Server Mode| Upload["STAGE 1: Server Mode<br/>Upload to AWS<br/>~300KB compressed"]
-    Decision -->|Local Mode| CoreML1["STAGE 1: Local Mode<br/>CoreML Input<br/>640x640 RGB"]
-    Decision -->|Developer Mode| CoreML2["STAGE 1: Developer Mode<br/>CoreML Input<br/>640x640 RGB"]
+    Decision -->|Server Mode| Upload["STAGE 1: Server<br/>Upload to AWS<br/>~300KB"]
+    Decision -->|Local Mode| CoreML1["STAGE 1: Local<br/>CoreML Input<br/>640x640"]
+    Decision -->|Developer Mode| CoreML2["STAGE 1: Developer<br/>CoreML Input<br/>640x640"]
     
-    Upload --> YOLO1[YOLOv8n PyTorch<br/>Output: Tensor<br/>5 objects detected]
-    CoreML1 --> YOLO2[YOLOv8n CoreML<br/>Output: MLMultiArray<br/>5 objects detected]
-    CoreML2 --> YOLO3[YOLOv8n CoreML<br/>Output: MLMultiArray<br/>5 objects detected]
+    Upload --> YOLO1[YOLOv8n PyTorch<br/>Tensor Output<br/>5 objects]
+    CoreML1 --> YOLO2[YOLOv8n CoreML<br/>MLMultiArray<br/>5 objects]
+    CoreML2 --> YOLO3[YOLOv8n CoreML<br/>MLMultiArray<br/>5 objects]
     
     YOLO1 --> Ingredients1[Ingredients JSON<br/>~150 bytes]
-    YOLO2 --> Ingredients2[Ingredients Array<br/>Swift String<br/>5 items]
-    YOLO3 --> Ingredients3[Ingredients Array<br/>Swift String<br/>5 items]
+    YOLO2 --> Ingredients2[Ingredients Array<br/>5 items]
+    YOLO3 --> Ingredients3[Ingredients Array<br/>5 items]
     
-    Ingredients1 --> MLX1["STAGE 2: Server Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
-    Ingredients2 --> MLX2["STAGE 2: Local Mode<br/>MLX Inference<br/>Qwen2.5-0.5B<br/>10-30s"]
-    Ingredients3 --> Ollama1["STAGE 2: Developer Mode<br/>Ollama Inference<br/>Qwen2.5:3b<br/>5-10s"]
+    Ingredients1 --> MLX1["STAGE 2: Server<br/>MLX 0.5B<br/>10-30s"]
+    Ingredients2 --> MLX2["STAGE 2: Local<br/>MLX 0.5B<br/>10-30s"]
+    Ingredients3 --> Ollama1["STAGE 2: Developer<br/>Ollama 3B<br/>5-10s"]
     
-    MLX1 --> RecipeJSON1[Recipe JSON<br/>~3-5KB<br/>snake_case]
-    MLX2 --> RecipeJSON2[Recipe JSON<br/>~3-5KB<br/>snake_case]
-    Ollama1 --> RecipeJSON3[Recipe JSON<br/>~3-5KB<br/>snake_case]
+    MLX1 --> RecipeJSON1[Recipe JSON<br/>~3-5KB]
+    MLX2 --> RecipeJSON2[Recipe JSON<br/>~3-5KB]
+    Ollama1 --> RecipeJSON3[Recipe JSON<br/>~3-5KB]
     
-    RecipeJSON1 --> Parse1[JSONDecoder<br/>Convert to Swift]
-    RecipeJSON2 --> Parse2[JSONDecoder<br/>Convert to Swift]
-    RecipeJSON3 --> Parse3[JSONDecoder<br/>Convert to Swift]
+    RecipeJSON1 --> Parse1[JSONDecoder]
+    RecipeJSON2 --> Parse2[JSONDecoder]
+    RecipeJSON3 --> Parse3[JSONDecoder]
     
-    Parse1 --> Display1[SwiftUI Display]
-    Parse2 --> Display2[SwiftUI Display]
-    Parse3 --> Display3[SwiftUI Display]
+    Parse1 --> Display[SwiftUI Display]
+    Parse2 --> Display
+    Parse3 --> Display
     
     style Photo fill:#e1f5fe
     style Upload fill:#ffcdd2
@@ -198,6 +198,7 @@ graph TD
     style MLX1 fill:#b3e5fc
     style MLX2 fill:#b3e5fc
     style Ollama1 fill:#ffe0b2
+    style Display fill:#f3e5f5
 ```
 
 ---
