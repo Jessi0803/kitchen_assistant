@@ -285,6 +285,103 @@ graph LR
 
 ---
 
+## CI/CD Integration
+
+### Backend CI/CD Pipeline
+
+```mermaid
+graph LR
+    A[GitHub Push] --> B[GitHub Actions]
+    B --> C[pytest<br/>Unit + API Tests]
+    C --> D{Tests Pass?}
+    D -->|Yes| E[Docker Build<br/>PyTorch CPU]
+    D -->|No| F[❌ Pipeline Failed]
+    E --> G[Push to<br/>Docker Hub]
+    G --> H[Deploy to<br/>AWS EC2]
+    H --> I[Pull Image<br/>on EC2]
+    I --> J[Docker Run<br/>Port 8000]
+    J --> K[Health Check<br/>/health endpoint]
+    K --> L{Health OK?}
+    L -->|Yes| M[✅ Deployment<br/>Success]
+    L -->|No| N[❌ Deployment<br/>Failed]
+    
+    style A fill:#e3f2fd
+    style B fill:#bbdefb
+    style C fill:#90caf9
+    style E fill:#64b5f6
+    style G fill:#42a5f5
+    style H fill:#2196f3
+    style I fill:#1e88e5
+    style J fill:#1976d2
+    style K fill:#1565c0
+    style M fill:#c8e6c9
+    style F fill:#ffcdd2
+    style N fill:#ffcdd2
+```
+
+### iOS CI/CD Pipeline
+
+```mermaid
+graph LR
+    A[GitHub Push] --> B[GitHub Actions]
+    B --> C[xcodebuild<br/>Build App]
+    C --> D{Build Success?}
+    D -->|Yes| E[XCTest<br/>Unit Tests]
+    D -->|No| F[❌ Build Failed]
+    E --> G{Tests Pass?}
+    G -->|Yes| H[XCUITest<br/>UI Tests]
+    G -->|No| I[❌ Tests Failed]
+    H --> J{UI Tests Pass?}
+    J -->|Yes| K[Archive Build]
+    J -->|No| L[❌ UI Tests Failed]
+    K --> M{Deploy?}
+    M -->|Yes| N[Upload to<br/>TestFlight]
+    M -->|No| O[✅ CI Complete]
+    N --> P[✅ Deployment<br/>Complete]
+    
+    style A fill:#e8f5e9
+    style B fill:#c8e6c9
+    style C fill:#a5d6a7
+    style E fill:#81c784
+    style H fill:#66bb6a
+    style K fill:#4caf50
+    style N fill:#43a047
+    style O fill:#c8e6c9
+    style P fill:#c8e6c9
+    style F fill:#ffcdd2
+    style I fill:#ffcdd2
+    style L fill:#ffcdd2
+```
+
+### CI/CD Workflow Comparison
+
+```mermaid
+graph TB
+    subgraph Backend["Backend Pipeline (Server Mode)"]
+        B1[Code Push] --> B2[Automated Tests]
+        B2 --> B3[Docker Build]
+        B3 --> B4[Push to Registry]
+        B4 --> B5[Auto Deploy EC2]
+        B5 --> B6[Health Check]
+    end
+    
+    subgraph iOS["iOS Pipeline"]
+        I1[Code Push] --> I2[Build App]
+        I2 --> I3[Unit Tests]
+        I3 --> I4[UI Tests]
+        I4 --> I5[Optional: TestFlight]
+    end
+    
+    Trigger[Git Push to Main] --> B1
+    Trigger --> I1
+    
+    style Trigger fill:#fff3e0
+    style Backend fill:#e3f2fd
+    style iOS fill:#e8f5e9
+```
+
+---
+
 ## Instructions to Generate Diagrams
 
 1. **Copy any of the Mermaid code blocks above**
