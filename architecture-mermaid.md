@@ -386,6 +386,247 @@ graph TB
 
 The application processes data through multiple stages, transforming a simple photo into a complete recipe. Here's how data shapes and formats evolve at each step:
 
+### Data Flow Diagram
+
+```mermaid
+graph TB
+    Start[📸 User Takes Photo] --> Capture[UIImage Capture<br/>1920×1080×3 RGB<br/>~2-3 MB]
+    
+    Capture --> ModeCheck{Processing<br/>Mode?}
+    
+    subgraph Stage1["🔍 STAGE 1: DETECTION"]
+        ModeCheck -->|Server| Upload[📤 Upload Image<br/>POST /api/detect<br/>JPEG 200-400 KB<br/>100-500ms]
+        ModeCheck -->|Local/Dev| LocalPrep[📱 Local Preprocess<br/>Resize to 640×640]
+        
+        Upload --> ServerYOLO[☁️ Server YOLO<br/>PyTorch CPU<br/>300-500ms]
+        LocalPrep --> LocalYOLO[📱 CoreML YOLO<br/>Neural Engine<br/>~100ms]
+        
+        ServerYOLO --> DetectionTensor1[Tensor Output<br/>N×6 array<br/>bbox + conf + class]
+        LocalYOLO --> DetectionTensor2[MLMultiArray<br/>N×6 array<br/>bbox + conf + class]
+    end
+    
+    DetectionTensor1 --> Mapping1[Class Mapping<br/>ID → Name]
+    DetectionTensor2 --> Mapping2[Class Mapping<br/>ID → Name]
+    
+    Mapping1 --> IngredientsJSON[📊 Ingredients JSON<br/>150-300 bytes<br/>Tomato, Cheese, Chicken]
+    Mapping2 --> IngredientsJSON
+    
+    IngredientsJSON --> UserInput[💭 User Input<br/>Meal Craving: pasta<br/>Dietary: None<br/>Cuisine: Italian]
+    
+    UserInput --> RequestPayload[🚀 Request Payload<br/>JSON 200-400 bytes<br/>ingredients + preferences]
+    
+    subgraph Stage2["🧠 STAGE 2: RECIPE GENERATION"]
+        RequestPayload --> Prompt[📝 Prompt Construction<br/>400-600 characters<br/>System + User prompt]
+        
+        Prompt --> ModeCheck2{LLM<br/>Mode?}
+        
+        ModeCheck2 -->|Server/Local| MLXToken[⚡ MLX Tokenization<br/>230 tokens<br/>Qwen2.5 tokenizer]
+        ModeCheck2 -->|Developer| OllamaToken[⚡ Ollama Tokenization<br/>230 tokens<br/>Qwen2.5 tokenizer]
+        
+        MLXToken --> MLXInfer[📱 MLX Inference<br/>Qwen2.5-0.5B-4bit<br/>24 layers, 896 hidden<br/>20-30 tok/s<br/>10-30 seconds]
+        OllamaToken --> OllamaInfer[🖥️ Ollama Inference<br/>Qwen2.5:3b<br/>32 layers, 2048 hidden<br/>40-60 tok/s<br/>5-10 seconds]
+        
+        MLXInfer --> GenTokens1[Generated Tokens<br/>~1200 tokens<br/>JSON text]
+        OllamaInfer --> GenTokens2[Generated Tokens<br/>~1200 tokens<br/>JSON text]
+    end
+    
+    GenTokens1 --> Extract[📝 Extract JSON<br/>Regex parsing<br/>Remove markdown]
+    GenTokens2 --> Extract
+    
+    Extract --> RecipeJSON[Recipe JSON<br/>3-5 KB<br/>title, ingredients, steps, nutrition]
+    
+    subgraph Stage3["🎨 STAGE 3: UI RENDERING"]
+        RecipeJSON --> Decode[🔄 JSONDecoder<br/>snake_case → camelCase<br/>Generate UUIDs<br/>~10ms]
+        
+        Decode --> SwiftStruct[Swift Recipe Struct<br/>Codable object<br/>In-memory]
+        
+        SwiftStruct --> Binding[Data Binding<br/>@Published property<br/>Trigger update]
+        
+        Binding --> UIRender[🎨 SwiftUI Render<br/>RecipeDetailView<br/>~16ms, 60 FPS]
+    end
+    
+    UIRender --> Display[✅ Display Recipe<br/>Title, Image, Ingredients<br/>Steps, Nutrition]
+    
+    style Start fill:#e1f5fe
+    style Capture fill:#b3e5fc
+    style Upload fill:#ffcdd2
+    style LocalPrep fill:#c8e6c9
+    style ServerYOLO fill:#ffcdd2
+    style LocalYOLO fill:#c8e6c9
+    style IngredientsJSON fill:#fff9c4
+    style UserInput fill:#f3e5f5
+    style Prompt fill:#e1bee7
+    style MLXInfer fill:#b3e5fc
+    style OllamaInfer fill:#ffe0b2
+    style RecipeJSON fill:#c5e1a5
+    style Decode fill:#bbdefb
+    style SwiftStruct fill:#90caf9
+    style UIRender fill:#64b5f6
+    style Display fill:#4caf50,color:#fff
+    
+    style Stage1 fill:#fff3e0,stroke:#ff6f00,stroke-width:2px
+    style Stage2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Stage3 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+```
+
+---
+
+### Simplified Data Flow (Horizontal)
+
+```mermaid
+graph LR
+    Photo[📸 Photo<br/>2-3 MB] --> Detection[🔍 YOLO Detection<br/>640×640 input<br/>100ms-1s]
+    
+    Detection --> Ingredients[📊 Ingredients<br/>JSON Array<br/>150-300 B]
+    
+    Ingredients --> Input[💭 User Input<br/>+Craving<br/>+Preferences]
+    
+    Input --> LLM[🧠 LLM Generation<br/>Qwen2.5<br/>5-30s]
+    
+    LLM --> Recipe[📝 Recipe JSON<br/>3-5 KB]
+    
+    Recipe --> Parse[🔄 Parse & Bind<br/>Swift Struct]
+    
+    Parse --> UI[🎨 UI Display<br/>SwiftUI]
+    
+    style Photo fill:#e1f5fe
+    style Detection fill:#fff3e0
+    style Ingredients fill:#fff9c4
+    style Input fill:#f3e5f5
+    style LLM fill:#e8f5e9
+    style Recipe fill:#c5e1a5
+    style Parse fill:#bbdefb
+    style UI fill:#4caf50,color:#fff
+```
+
+---
+
+### Data Flow Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    participant Camera
+    participant YOLO as YOLO Detection
+    participant App as iOS App
+    participant LLM as LLM (Qwen2.5)
+    participant UI as SwiftUI
+    
+    User->>Camera: Take Photo
+    Camera->>App: UIImage (1920×1080, 2-3MB)
+    
+    alt Server Mode
+        App->>YOLO: Upload JPEG (200-400KB)
+        Note over YOLO: AWS EC2 Server<br/>PyTorch YOLOv8n<br/>300-500ms
+    else Local/Developer Mode
+        Note over App,YOLO: On-Device CoreML<br/>Neural Engine<br/>~100ms
+    end
+    
+    YOLO->>App: Detection Results<br/>Tensor (N×6)<br/>Class IDs
+    App->>App: Map IDs to Names<br/>["Tomato", "Cheese", "Chicken"]
+    
+    User->>App: Input "pasta" + preferences
+    App->>App: Construct Prompt<br/>(400-600 chars, ~230 tokens)
+    
+    alt MLX (iPhone)
+        App->>LLM: Tokenized Prompt
+        Note over LLM: Qwen2.5-0.5B-4bit<br/>iPhone GPU (Metal)<br/>20-30 tok/s, 10-30s
+        LLM->>App: Generated Recipe<br/>(~1200 tokens)
+    else Ollama (Mac)
+        App->>LLM: HTTP POST to Mac
+        Note over LLM: Qwen2.5:3b<br/>Mac GPU (Metal)<br/>40-60 tok/s, 5-10s
+        LLM->>App: Recipe JSON (3-5KB)
+    end
+    
+    App->>App: Extract & Parse JSON<br/>JSONDecoder<br/>Generate UUIDs
+    App->>UI: Data Binding<br/>@Published update
+    UI->>UI: SwiftUI Render<br/>RecipeDetailView<br/>~16ms
+    UI->>User: Display Recipe
+    
+    Note over User,UI: Total Time: 5-32 seconds<br/>(depending on mode)
+```
+
+---
+
+### Data Size Evolution
+
+```mermaid
+graph TB
+    subgraph Input["INPUT STAGE"]
+        S1[Photo: 2-3 MB<br/>Uncompressed]
+        S2[Upload: 200-400 KB<br/>JPEG compressed]
+        S3[Model Input: ~1.2 MB<br/>640×640×3 tensor]
+    end
+    
+    subgraph Processing["PROCESSING"]
+        S4[Detection Output: 50-200 B<br/>N×6 tensor]
+        S5[Ingredients JSON: 150-300 B<br/>Array of strings]
+        S6[LLM Prompt: 1-2 KB<br/>~230 tokens]
+    end
+    
+    subgraph Output["OUTPUT STAGE"]
+        S7[LLM Output: 10-15 KB<br/>~1200 tokens raw text]
+        S8[Recipe JSON: 3-5 KB<br/>Cleaned & parsed]
+        S9[Swift Struct: In-Memory<br/>Native objects]
+    end
+    
+    S1 --> S2 --> S3
+    S3 --> S4 --> S5 --> S6
+    S6 --> S7 --> S8 --> S9
+    
+    style Input fill:#e3f2fd
+    style Processing fill:#fff3e0
+    style Output fill:#e8f5e9
+    
+    style S1 fill:#ef5350,color:#fff
+    style S2 fill:#ff7043
+    style S3 fill:#ffa726
+    style S4 fill:#ffee58
+    style S5 fill:#d4e157
+    style S6 fill:#9ccc65
+    style S7 fill:#66bb6a
+    style S8 fill:#26a69a
+    style S9 fill:#26c6da
+```
+
+---
+
+### Processing Time Breakdown
+
+```mermaid
+gantt
+    title Complete Recipe Generation Timeline
+    dateFormat X
+    axisFormat %Ss
+    
+    section Server Mode
+    Photo Capture           :0, 0s
+    Image Upload            :1, 0.5s
+    YOLO Detection (AWS)    :2, 0.5s
+    User Input              :3, 2s
+    MLX LLM Generation      :4, 20s
+    JSON Parse & Render     :5, 0.1s
+    
+    section Local Mode
+    Photo Capture           :10, 0s
+    CoreML Detection        :11, 0.1s
+    User Input              :12, 2s
+    MLX LLM Generation      :13, 20s
+    JSON Parse & Render     :14, 0.1s
+    
+    section Developer Mode
+    Photo Capture           :20, 0s
+    CoreML Detection        :21, 0.1s
+    User Input              :22, 2s
+    Ollama LLM Generation   :23, 7s
+    JSON Parse & Render     :24, 0.1s
+```
+
+---
+
+### Detailed Step-by-Step Breakdown
+
 ### 📸 Step 1: User Takes Photo
 **iOS Camera Capture**
 - **Format**: `UIImage` (native iOS image object)
