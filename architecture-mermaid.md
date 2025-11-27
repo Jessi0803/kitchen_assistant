@@ -390,16 +390,16 @@ The application processes data through multiple stages, transforming a simple ph
 
 ```mermaid
 graph TB
-    Start[📸 User Takes Photo] --> Capture[UIImage Capture<br/>1920×1080×3 RGB<br/>~2-3 MB]
+    Start[User Takes Photo] --> Capture[UIImage Capture<br/>1920×1080×3 RGB<br/>~2-3 MB]
     
     Capture --> ModeCheck{Processing<br/>Mode?}
     
-    subgraph Stage1["🔍 STAGE 1: DETECTION"]
-        ModeCheck -->|Server| Upload[📤 Upload Image<br/>POST /api/detect<br/>JPEG 200-400 KB<br/>100-500ms]
-        ModeCheck -->|Local/Dev| LocalPrep[📱 Local Preprocess<br/>Resize to 640×640]
+    subgraph Stage1["STAGE 1: DETECTION"]
+        ModeCheck -->|Server| Upload[Upload Image<br/>POST /api/detect<br/>JPEG 200-400 KB<br/>100-500ms]
+        ModeCheck -->|Local/Dev| LocalPrep[Local Preprocess<br/>Resize to 640×640]
         
-        Upload --> ServerYOLO[☁️ Server YOLO<br/>PyTorch CPU<br/>300-500ms]
-        LocalPrep --> LocalYOLO[📱 CoreML YOLO<br/>Neural Engine<br/>~100ms]
+        Upload --> ServerYOLO[Server YOLO<br/>PyTorch CPU<br/>300-500ms]
+        LocalPrep --> LocalYOLO[CoreML YOLO<br/>Neural Engine<br/>~100ms]
         
         ServerYOLO --> DetectionTensor1[Tensor Output<br/>N×6 array<br/>bbox + conf + class]
         LocalYOLO --> DetectionTensor2[MLMultiArray<br/>N×6 array<br/>bbox + conf + class]
@@ -408,44 +408,44 @@ graph TB
     DetectionTensor1 --> Mapping1[Class Mapping<br/>ID → Name]
     DetectionTensor2 --> Mapping2[Class Mapping<br/>ID → Name]
     
-    Mapping1 --> IngredientsJSON[📊 Ingredients JSON<br/>150-300 bytes<br/>Tomato, Cheese, Chicken]
+    Mapping1 --> IngredientsJSON[Ingredients JSON<br/>150-300 bytes<br/>Tomato, Cheese, Chicken]
     Mapping2 --> IngredientsJSON
     
-    IngredientsJSON --> UserInput[💭 User Input<br/>Meal Craving: pasta<br/>Dietary: None<br/>Cuisine: Italian]
+    IngredientsJSON --> UserInput[User Input<br/>Meal Craving: pasta<br/>Dietary: None<br/>Cuisine: Italian]
     
-    UserInput --> RequestPayload[🚀 Request Payload<br/>JSON 200-400 bytes<br/>ingredients + preferences]
+    UserInput --> RequestPayload[Request Payload<br/>JSON 200-400 bytes<br/>ingredients + preferences]
     
-    subgraph Stage2["🧠 STAGE 2: RECIPE GENERATION"]
-        RequestPayload --> Prompt[📝 Prompt Construction<br/>400-600 characters<br/>System + User prompt]
+    subgraph Stage2["STAGE 2: RECIPE GENERATION"]
+        RequestPayload --> Prompt[Prompt Construction<br/>400-600 characters<br/>System + User prompt]
         
         Prompt --> ModeCheck2{LLM<br/>Mode?}
         
-        ModeCheck2 -->|Server/Local| MLXToken[⚡ MLX Tokenization<br/>230 tokens<br/>Qwen2.5 tokenizer]
-        ModeCheck2 -->|Developer| OllamaToken[⚡ Ollama Tokenization<br/>230 tokens<br/>Qwen2.5 tokenizer]
+        ModeCheck2 -->|Server/Local| MLXToken[MLX Tokenization<br/>230 tokens<br/>Qwen2.5 tokenizer]
+        ModeCheck2 -->|Developer| OllamaToken[Ollama Tokenization<br/>230 tokens<br/>Qwen2.5 tokenizer]
         
-        MLXToken --> MLXInfer[📱 MLX Inference<br/>Qwen2.5-0.5B-4bit<br/>24 layers, 896 hidden<br/>20-30 tok/s<br/>10-30 seconds]
-        OllamaToken --> OllamaInfer[🖥️ Ollama Inference<br/>Qwen2.5:3b<br/>32 layers, 2048 hidden<br/>40-60 tok/s<br/>5-10 seconds]
+        MLXToken --> MLXInfer[MLX Inference<br/>Qwen2.5-0.5B-4bit<br/>24 layers, 896 hidden<br/>20-30 tok/s<br/>10-30 seconds]
+        OllamaToken --> OllamaInfer[Ollama Inference<br/>Qwen2.5:3b<br/>32 layers, 2048 hidden<br/>40-60 tok/s<br/>5-10 seconds]
         
         MLXInfer --> GenTokens1[Generated Tokens<br/>~1200 tokens<br/>JSON text]
         OllamaInfer --> GenTokens2[Generated Tokens<br/>~1200 tokens<br/>JSON text]
     end
     
-    GenTokens1 --> Extract[📝 Extract JSON<br/>Regex parsing<br/>Remove markdown]
+    GenTokens1 --> Extract[Extract JSON<br/>Regex parsing<br/>Remove markdown]
     GenTokens2 --> Extract
     
     Extract --> RecipeJSON[Recipe JSON<br/>3-5 KB<br/>title, ingredients, steps, nutrition]
     
-    subgraph Stage3["🎨 STAGE 3: UI RENDERING"]
-        RecipeJSON --> Decode[🔄 JSONDecoder<br/>snake_case → camelCase<br/>Generate UUIDs<br/>~10ms]
+    subgraph Stage3["STAGE 3: UI RENDERING"]
+        RecipeJSON --> Decode[JSONDecoder<br/>snake_case → camelCase<br/>Generate UUIDs<br/>~10ms]
         
         Decode --> SwiftStruct[Swift Recipe Struct<br/>Codable object<br/>In-memory]
         
         SwiftStruct --> Binding[Data Binding<br/>@Published property<br/>Trigger update]
         
-        Binding --> UIRender[🎨 SwiftUI Render<br/>RecipeDetailView<br/>~16ms, 60 FPS]
+        Binding --> UIRender[SwiftUI Render<br/>RecipeDetailView<br/>~16ms, 60 FPS]
     end
     
-    UIRender --> Display[✅ Display Recipe<br/>Title, Image, Ingredients<br/>Steps, Nutrition]
+    UIRender --> Display[Display Recipe<br/>Title, Image, Ingredients<br/>Steps, Nutrition]
     
     style Start fill:#e1f5fe
     style Capture fill:#b3e5fc
@@ -475,19 +475,19 @@ graph TB
 
 ```mermaid
 graph LR
-    Photo[📸 Photo<br/>2-3 MB] --> Detection[🔍 YOLO Detection<br/>640×640 input<br/>100ms-1s]
+    Photo[Photo<br/>2-3 MB] --> Detection[YOLO Detection<br/>640×640 input<br/>100ms-1s]
     
-    Detection --> Ingredients[📊 Ingredients<br/>JSON Array<br/>150-300 B]
+    Detection --> Ingredients[Ingredients<br/>JSON Array<br/>150-300 B]
     
-    Ingredients --> Input[💭 User Input<br/>+Craving<br/>+Preferences]
+    Ingredients --> Input[User Input<br/>+Craving<br/>+Preferences]
     
-    Input --> LLM[🧠 LLM Generation<br/>Qwen2.5<br/>5-30s]
+    Input --> LLM[LLM Generation<br/>Qwen2.5<br/>5-30s]
     
-    LLM --> Recipe[📝 Recipe JSON<br/>3-5 KB]
+    LLM --> Recipe[Recipe JSON<br/>3-5 KB]
     
-    Recipe --> Parse[🔄 Parse & Bind<br/>Swift Struct]
+    Recipe --> Parse[Parse & Bind<br/>Swift Struct]
     
-    Parse --> UI[🎨 UI Display<br/>SwiftUI]
+    Parse --> UI[UI Display<br/>SwiftUI]
     
     style Photo fill:#e1f5fe
     style Detection fill:#fff3e0
@@ -627,7 +627,7 @@ gantt
 
 ### Detailed Step-by-Step Breakdown
 
-### 📸 Step 1: User Takes Photo
+### Step 1: User Takes Photo
 **iOS Camera Capture**
 - **Format**: `UIImage` (native iOS image object)
 - **Dimensions**: `(1920, 1080, 3)` - RGB image data
@@ -636,7 +636,7 @@ gantt
 
 ---
 
-### 📤 Step 2: Image Upload to Backend (Server Mode Only)
+### Step 2: Image Upload to Backend (Server Mode Only)
 **HTTP POST Request**
 - **Endpoint**: `POST /api/detect`
 - **Content-Type**: `multipart/form-data`
@@ -646,7 +646,7 @@ gantt
 
 ---
 
-### 🔍 Step 3: YOLO Detection Processing
+### Step 3: YOLO Detection Processing
 **Image Preprocessing**
 - **Input Resize**: `(1920, 1080, 3)` → `(640, 640, 3)`
 - **Normalization**: Pixel values scaled to `[0, 1]`
@@ -685,7 +685,7 @@ FOOD_MAPPING = {
 
 ---
 
-### 📊 Step 4: Detection Results Returned
+### Step 4: Detection Results Returned
 **JSON Response Structure**
 ```json
 {
@@ -704,7 +704,7 @@ FOOD_MAPPING = {
 
 ---
 
-### 💭 Step 5: User Inputs Meal Craving
+### Step 5: User Inputs Meal Craving
 **User Input**
 - **Type**: String input via SwiftUI TextField
 - **Example**: `"pasta"`, `"soup"`, `"stir-fry"`
@@ -715,7 +715,7 @@ FOOD_MAPPING = {
 
 ---
 
-### 🚀 Step 6: Recipe Generation Request
+### Step 6: Recipe Generation Request
 **HTTP POST to LLM Service**
 
 **Server/Local Mode (MLX on iPhone)**:
@@ -740,7 +740,7 @@ FOOD_MAPPING = {
 
 ---
 
-### 🧠 Step 7: Prompt Construction
+### Step 7: Prompt Construction
 **System Prompt Template**
 ```text
 You are a professional chef AI assistant. Create a detailed recipe in JSON format.
@@ -768,7 +768,7 @@ Generate a recipe with the following JSON structure:
 
 ---
 
-### ⚡ Step 8: LLM Tokenization & Inference
+### Step 8: LLM Tokenization & Inference
 
 **Tokenization Process**
 - **Input**: Prompt string (~500 characters)
@@ -818,7 +818,7 @@ Generated Token IDs: [123, 456, 789, 234, 567, ...]  # ~1200 tokens
 
 ---
 
-### 📝 Step 9: Recipe JSON Response
+### Step 9: Recipe JSON Response
 **LLM Output Parsing**
 - **Raw Output**: String containing JSON (may have markdown formatting)
 - **Extraction**: Regex to extract JSON from markdown code blocks
@@ -880,7 +880,7 @@ Here's a delicious recipe for you:
 
 ---
 
-### 🔄 Step 10: iOS JSON Parsing & Data Transformation
+### Step 10: iOS JSON Parsing & Data Transformation
 **JSONDecoder Processing**
 ```swift
 // Swift Codable struct
@@ -932,7 +932,7 @@ let recipe = try decoder.decode(Recipe.self, from: jsonData)
 
 ---
 
-### 🎨 Step 11: SwiftUI UI Update
+### Step 11: SwiftUI UI Update
 **Data Binding & Reactive Updates**
 ```swift
 @StateObject var viewModel = RecipeViewModel()
